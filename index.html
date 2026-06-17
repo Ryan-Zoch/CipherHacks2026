@@ -1,1 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AEGIS DYNAMICS :: Secure Access Terminal</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
 
+<!-- ============ BOOT / LOGIN SCREEN ============ -->
+<section id="login-screen" class="screen">
+  <div class="crt-overlay"></div>
+  <div class="login-box">
+    <div class="login-logo">
+      <span class="logo-mark">&#9670;</span> AEGIS DYNAMICS
+      <small>SECURE ACCESS TERMINAL v2.7</small>
+    </div>
+    <div class="boot-log" id="boot-log"></div>
+    <form id="login-form" class="login-form" autocomplete="off">
+      <label>USERNAME
+        <input type="text" id="login-user" value="security.officer" autocomplete="off">
+      </label>
+      <label>PASSWORD
+        <input type="password" id="login-pass" value="••••••••••" autocomplete="off">
+      </label>
+      <button type="submit" id="login-btn">LOG IN</button>
+      <div class="login-status" id="login-status">Status: Awaiting credentials...</div>
+    </form>
+    <div class="login-footer">UNAUTHORIZED ACCESS IS A VIOLATION OF COMPANY POLICY 4.1.2</div>
+  </div>
+</section>
+
+<!-- ============ BRIEFING SCREEN ============ -->
+<section id="briefing-screen" class="screen hidden">
+  <div class="briefing-box">
+    <h1>MEMO: IT SECURITY OFFICER</h1>
+    <p>Welcome to Aegis Dynamics. Your job is simple: review every job applicant and every internal
+    message that crosses your desk, then <strong>APPROVE</strong> or <strong>DENY</strong> them.</p>
+    <ul>
+      <li>Open the <strong>LinkedIn</strong>, <strong>Mail</strong>, and <strong>Messages</strong> windows to inspect each applicant.</li>
+      <li>Use the <strong>Verification Terminal</strong> to cross-check claims against personnel records.</li>
+      <li>Letting a fake through &mdash; or rejecting a real hire &mdash; damages company integrity.</li>
+      <li>The better you do, the trickier the applicants get.</li>
+    </ul>
+    <button id="briefing-start-btn">START SHIFT</button>
+  </div>
+</section>
+
+<!-- ============ DESKTOP / MAIN GAME ============ -->
+<section id="desktop-screen" class="screen hidden">
+
+  <!-- HUD -->
+  <header id="hud">
+    <div class="hud-group hud-brand">AEGIS<span>DYNAMICS</span></div>
+    <div class="hud-group hud-health">
+      <span class="hud-label">COMPANY INTEGRITY</span>
+      <div class="health-bar"><div class="health-bar-fill" id="health-fill"></div></div>
+      <span class="hud-value" id="health-value">100%</span>
+    </div>
+    <div class="hud-group">
+      <span class="hud-label">CASE</span>
+      <span class="hud-value" id="case-count">0 / 0</span>
+    </div>
+    <div class="hud-group">
+      <span class="hud-label">THREAT LEVEL</span>
+      <span class="hud-value" id="difficulty-value">1</span>
+    </div>
+    <div class="hud-group">
+      <span class="hud-label">SCORE</span>
+      <span class="hud-value" id="score-value">0</span>
+    </div>
+  </header>
+
+  <!-- Desktop icons -->
+  <div id="desktop-icons">
+    <button class="desktop-icon" data-window="linkedin">
+      <span class="icon-glyph icon-linkedin">in</span>
+      <span class="icon-label">LinkedOut</span>
+    </button>
+    <button class="desktop-icon" data-window="email">
+      <span class="icon-glyph icon-email">&#9993;</span>
+      <span class="icon-label">MailHub</span>
+    </button>
+    <button class="desktop-icon" data-window="text">
+      <span class="icon-glyph icon-text">&#9998;</span>
+      <span class="icon-label">PingMe</span>
+    </button>
+    <button class="desktop-icon" data-window="terminal">
+      <span class="icon-glyph icon-terminal">&gt;_</span>
+      <span class="icon-label">Verify-Term</span>
+    </button>
+  </div>
+
+  <!-- ===== WINDOW: LinkedOut (LinkedIn-style) ===== -->
+  <div class="window window-linkedin" id="window-linkedin" data-window="linkedin">
+    <div class="window-titlebar" data-drag-handle>
+      <span class="window-title">&#128188; LinkedOut &mdash; Professional Profile</span>
+      <div class="window-controls">
+        <button class="win-btn win-min" data-action="minimize">_</button>
+        <button class="win-btn win-close" data-action="close">&times;</button>
+      </div>
+    </div>
+    <div class="window-body li-body">
+      <div class="li-cover"></div>
+      <div class="li-header">
+        <img class="li-pfp" id="li-pfp" src="" alt="profile photo">
+        <div class="li-header-text">
+          <h2 id="li-name">&nbsp;</h2>
+          <p id="li-headline" class="li-headline">&nbsp;</p>
+          <p id="li-location" class="li-location">&nbsp;</p>
+          <p id="li-mutuals" class="li-mutuals">&nbsp;</p>
+        </div>
+        <button class="li-connect-btn" disabled>+ Connect</button>
+      </div>
+      <div class="li-meta-row">
+        <div class="li-meta-chip">Gender: <b id="li-gender">-</b></div>
+        <div class="li-meta-chip">Age: <b id="li-age">-</b></div>
+        <div class="li-meta-chip">Applying for: <b id="li-job">-</b></div>
+      </div>
+      <div class="li-section">
+        <h3>Experience</h3>
+        <ul id="li-experience"></ul>
+      </div>
+      <div class="li-section">
+        <h3>Education</h3>
+        <p id="li-education">&nbsp;</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== WINDOW: MailHub (Gmail-style) ===== -->
+  <div class="window window-email" id="window-email" data-window="email">
+    <div class="window-titlebar" data-drag-handle>
+      <span class="window-title">&#9993; MailHub Inbox</span>
+      <div class="window-controls">
+        <button class="win-btn win-min" data-action="minimize">_</button>
+        <button class="win-btn win-close" data-action="close">&times;</button>
+      </div>
+    </div>
+    <div class="window-body email-body">
+      <div class="email-sidebar">
+        <button class="email-compose">+ Compose</button>
+        <div class="email-folder active">Inbox</div>
+        <div class="email-folder">Sent</div>
+        <div class="email-folder">Spam</div>
+        <div class="email-folder">Trash</div>
+      </div>
+      <div class="email-reading-pane" id="email-reading-pane">
+        <div class="email-empty" id="email-empty">No message selected for this applicant.</div>
+        <div class="email-content hidden" id="email-content">
+          <h2 id="email-subject">&nbsp;</h2>
+          <div class="email-meta">
+            <span id="email-sender-name">&nbsp;</span>
+            <span class="email-addr">&lt;<span id="email-sender-address"></span>&gt;</span>
+          </div>
+          <hr>
+          <pre id="email-body-text"></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== WINDOW: PingMe (iMessage/WhatsApp-style) ===== -->
+  <div class="window window-text" id="window-text" data-window="text">
+    <div class="window-titlebar" data-drag-handle>
+      <span class="window-title">&#9998; PingMe</span>
+      <div class="window-controls">
+        <button class="win-btn win-min" data-action="minimize">_</button>
+        <button class="win-btn win-close" data-action="close">&times;</button>
+      </div>
+    </div>
+    <div class="window-body text-body">
+      <div class="phone-header">
+        <img class="phone-contact-pfp" id="text-pfp" src="" alt="">
+        <span id="text-contact-name">&nbsp;</span>
+      </div>
+      <div class="phone-thread" id="phone-thread">
+        <div class="text-empty" id="text-empty">No new messages from this applicant.</div>
+      </div>
+      <div class="phone-input-bar">
+        <input type="text" disabled placeholder="iMessage">
+        <button disabled>&#8593;</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== WINDOW: Verification Terminal ===== -->
+  <div class="window window-terminal" id="window-terminal" data-window="terminal">
+    <div class="window-titlebar" data-drag-handle>
+      <span class="window-title">&gt;_ Verification Terminal</span>
+      <div class="window-controls">
+        <button class="win-btn win-min" data-action="minimize">_</button>
+        <button class="win-btn win-close" data-action="close">&times;</button>
+      </div>
+    </div>
+    <div class="window-body terminal-body">
+      <pre id="terminal-output">AEGIS PERSONNEL RECORDS &amp; BACKGROUND VERIFICATION SYSTEM
+------------------------------------------------------
+Awaiting query...</pre>
+    </div>
+  </div>
+
+  <!-- Decision dock -->
+  <footer id="decision-dock">
+    <div class="dock-applicant">
+      <img id="dock-pfp" src="" alt="">
+      <div class="dock-name-block">
+        <span id="dock-name">&nbsp;</span>
+        <span id="dock-sub">Reviewing application&hellip;</span>
+      </div>
+    </div>
+    <div class="dock-actions">
+      <button id="btn-deny" class="dock-btn dock-deny">DENY</button>
+      <button id="btn-approve" class="dock-btn dock-approve">APPROVE</button>
+    </div>
+  </footer>
+
+  <!-- Taskbar -->
+  <nav id="taskbar">
+    <button id="taskbar-start">&#9670; START</button>
+    <div id="taskbar-windows"></div>
+    <div id="taskbar-clock">9:41 AM</div>
+  </nav>
+
+  <!-- Feedback toast -->
+  <div id="feedback-toast" class="hidden"></div>
+</section>
+
+<!-- ============ END SCREEN ============ -->
+<section id="end-screen" class="screen hidden">
+  <div class="end-box">
+    <h1 id="end-title">SHIFT OVER</h1>
+    <p id="end-subtitle"></p>
+    <div class="end-stats">
+      <div><span id="end-score">0</span><small>FINAL SCORE</small></div>
+      <div><span id="end-correct">0</span><small>CORRECT CALLS</small></div>
+      <div><span id="end-difficulty">1</span><small>PEAK THREAT LEVEL</small></div>
+    </div>
+    <button id="restart-btn">RESTART SHIFT</button>
+  </div>
+</section>
+
+<script src="script.js"></script>
+</body>
+</html>
