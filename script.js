@@ -108,7 +108,47 @@ const Game = {
   over: false,
   openWindows: new Set(),
   focusedWindow: null,
-  shakeWatcherId: null
+  shakeWatcherId: null,
+  storyMode: false,
+  storyQueue: [],
+  storyIndex: 0
+};
+
+/* ----------------------- STORY MODE: ZERO TRUST ----------------------- */
+
+const STORY_SHIFTS = [
+  { ids: [1, 31, 3, 38, 11] },
+  { ids: [28, 13, 33, 34, 37] },
+  { ids: [24, 39, 17, 27, 40] }
+];
+const STORY_ROSTER_IDS = STORY_SHIFTS.flatMap(s => s.ids);
+const STORY_SHIFT_STARTS = [0, 5, 10];
+const STORY_ZYAN_ID = 40;
+
+const STORY_BRIEFINGS = [
+  'A routine night. Confirm each person is who they claim to be — match the name on the profile to the name on the email, and watch the domains. Most of tonight is noise. Get your eye in.',
+  'Sharper requests tonight. Some applicants aren’t just asking for access — they want you to reset something, approve a prompt, confirm a code. Real IT never asks you to approve their login. Read what they want, not just who they are.',
+  'The SOC says someone has been probing us all week — those junk applications were reconnaissance. Tonight they make their move, and they’ll look like one of us. Verify every name against what you already know to be real. Hold the line.'
+];
+
+const STORY_FINALE_REVEAL = {
+  denied: 'DENIED. You check the address one more time: ryan.zoch@aegisdynarnics.com — not aegisdynamics. One letter; “rn” wearing the shape of an “m.” The real Ryan Zoch signed his transfer two nights ago, from the real domain. The account belongs to Zyan Roch — the same “grandson” name on a scam you cleared on Shift 2. One operator, mapping Aegis all week. Tonight he ran out of road.',
+  approved: 'ACCESS GRANTED. The signing link goes out, and within the hour “Ryan Zoch” pulls the propulsion test-stand archives and vanishes. It was never Ryan — ryan.zoch@aegisdynarnics.com, one letter off. The account belonged to Zyan Roch, the same name buried in a scam you waved through on Shift 2. He probed Aegis all week behind small, forgettable requests. Tonight you opened the door.'
+};
+
+const STORY_ENDINGS = {
+  good: {
+    title: 'YOU HELD THE LINE',
+    subtitle: 'Aegis is secure tonight; the operator’s campaign is burned. The SOC has a name now: Zyan Roch. That’s all he got.'
+  },
+  breach: {
+    title: 'AEGIS WAS BREACHED',
+    subtitle: 'The test-stand data is gone and the board wants answers by morning. You caught small fish all week and let the shark walk through the front door.'
+  },
+  termination: {
+    title: 'TERMINATED',
+    subtitle: 'Company integrity is gone, and Security walked you out before the week was over. Somewhere out there, Zyan Roch is still mapping Aegis. Now it’s someone else’s problem.'
+  }
 };
 
 /* ----------------------- BOOT LOG / LOGIN ----------------------- */
@@ -139,13 +179,22 @@ function setupLogin() {
   runBootLog();
   const form = document.getElementById('login-form');
   const status = document.getElementById('login-status');
-  form.addEventListener('submit', (e) => {
-    e.preventDefault();
+
+  function authenticate(onDone) {
     status.textContent = 'Status: Authenticating...';
     setTimeout(() => {
       status.textContent = 'Status: Access granted.';
-      setTimeout(startGame, 500);
+      setTimeout(onDone, 500);
     }, 700);
+  }
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    authenticate(() => startGame(false));
+  });
+
+  document.getElementById('story-mode-btn').addEventListener('click', () => {
+    authenticate(() => startGame(true));
   });
 }
 
@@ -158,11 +207,15 @@ async function loadPeople() {
   return rows.map(normalizePerson);
 }
 
-function startGame() {
+function startGame(storyMode) {
   document.getElementById('login-screen').classList.add('hidden');
   document.getElementById('end-screen').classList.add('hidden');
+  document.getElementById('end-screen').classList.remove('breach-glitch');
+  document.getElementById('story-briefing').classList.add('hidden');
+  document.getElementById('story-reveal').classList.add('hidden');
   document.getElementById('desktop-screen').classList.remove('hidden');
 
+  Game.storyMode = !!storyMode;
   Game.pool = Game.people.slice();
   Game.round = [];
   Game.history = [];
@@ -172,19 +225,28 @@ function startGame() {
   Game.difficulty = 1;
   Game.streak = 0;
   Game.caseNumber = 0;
-  Game.totalCases = Game.people.length;
   Game.peakDifficulty = 1;
   Game.correctCount = 0;
   Game.over = false;
+  Game.storyIndex = 0;
+  Game.storyQueue = Game.storyMode
+    ? STORY_ROSTER_IDS.map(id => Game.people.find(p => p.id === id)).filter(Boolean)
+    : [];
+  Game.totalCases = Game.storyMode ? Game.storyQueue.length : Game.people.length;
 
   renderHistory();
   updateFooter();
   updateTipsCopy();
-  nextRound();
   startClock();
   openWindow('tips');
   centerWindow(document.getElementById('window-tips'));
   startShakeWatcher();
+
+  if (Game.storyMode) {
+    storyAdvance();
+  } else {
+    nextRound();
+  }
 }
 
 function updateTipsCopy() {
@@ -213,6 +275,66 @@ function updateTipsCopy() {
       '<li>Integrity, Score, Case count, and Threat Level live at the top of the Case File.</li>' +
       '<li>Drag windows by their title bar, resize them from the bottom-right corner.</li>';
   }
+}
+
+/* ----------------------- STORY MODE FLOW ----------------------- */
+
+function showStoryBriefing(shiftNumber, onDone) {
+  const overlay = document.getElementById('story-briefing');
+  document.getElementById('story-briefing-title').textContent = `SHIFT ${shiftNumber} BRIEFING`;
+  document.getElementById('story-briefing-body').textContent = STORY_BRIEFINGS[shiftNumber - 1];
+  overlay.classList.remove('hidden');
+  const btn = document.getElementById('story-briefing-btn');
+  const handler = () => {
+    overlay.classList.add('hidden');
+    btn.removeEventListener('click', handler);
+    onDone();
+  };
+  btn.addEventListener('click', handler);
+}
+
+function showStoryReveal(text, onDone) {
+  const overlay = document.getElementById('story-reveal');
+  document.getElementById('story-reveal-body').textContent = text;
+  overlay.classList.remove('hidden');
+  const btn = document.getElementById('story-reveal-btn');
+  const handler = () => {
+    overlay.classList.add('hidden');
+    btn.removeEventListener('click', handler);
+    onDone();
+  };
+  btn.addEventListener('click', handler);
+}
+
+function renderStoryCard() {
+  const p = Game.storyQueue[Game.storyIndex];
+  Game.round = [{ person: p, platform: null, decided: false }];
+  renderRound();
+}
+
+function storyAdvance() {
+  if (Game.over) return;
+  const idx = Game.storyIndex;
+  if (idx >= Game.storyQueue.length) return;
+  const shiftStartPos = STORY_SHIFT_STARTS.indexOf(idx);
+  if (shiftStartPos !== -1) {
+    showStoryBriefing(shiftStartPos + 1, renderStoryCard);
+  } else {
+    renderStoryCard();
+  }
+}
+
+function triggerGlitch() {
+  const desktop = document.getElementById('desktop-screen');
+  desktop.classList.remove('glitch-flash');
+  void desktop.offsetWidth;
+  desktop.classList.add('glitch-flash');
+  setTimeout(() => desktop.classList.remove('glitch-flash'), 500);
+}
+
+function finishStoryZyan(approved) {
+  const text = approved ? STORY_FINALE_REVEAL.approved : STORY_FINALE_REVEAL.denied;
+  showStoryReveal(text, () => endGame(approved ? 'breach' : 'good'));
 }
 
 /* ----------------------- ROUND / APPLICANT SELECTION ----------------------- */
@@ -506,11 +628,13 @@ function decideEntry(entry, approved) {
 
   if (correct) {
     Game.score += 10 * p.difficulty;
-    Game.streak++;
     Game.correctCount++;
-    if (Game.streak >= 2) {
-      Game.difficulty = Math.min(5, Game.difficulty + 1);
-      Game.streak = 0;
+    if (!Game.storyMode) {
+      Game.streak++;
+      if (Game.streak >= 2) {
+        Game.difficulty = Math.min(5, Game.difficulty + 1);
+        Game.streak = 0;
+      }
     }
     showToast(true, approved
       ? `Correct - ${p.name} was a legitimate hire.`
@@ -518,11 +642,18 @@ function decideEntry(entry, approved) {
   } else {
     const damage = 8 + p.difficulty * 4;
     Game.health -= damage;
-    Game.streak = 0;
-    Game.difficulty = Math.max(1, Game.difficulty - 1);
-    showToast(false, approved
-      ? `Mistake! ${p.name} was a fraudulent applicant. -${damage}% integrity.`
-      : `Mistake! ${p.name} was a real hire, wrongly denied. -${damage}% integrity.`);
+    if (!Game.storyMode) {
+      Game.streak = 0;
+      Game.difficulty = Math.max(1, Game.difficulty - 1);
+    }
+    if (Game.storyMode && approved && p.isFake) {
+      triggerGlitch();
+      showToast(false, '⚠ INTRUSION DETECTED — you granted access to a hostile actor. Company integrity takes the hit.');
+    } else {
+      showToast(false, approved
+        ? `Mistake! ${p.name} was a fraudulent applicant. -${damage}% integrity.`
+        : `Mistake! ${p.name} was a real hire, wrongly denied. -${damage}% integrity.`);
+    }
   }
   Game.peakDifficulty = Math.max(Game.peakDifficulty, Game.difficulty);
   Game.history.unshift({
@@ -535,14 +666,24 @@ function decideEntry(entry, approved) {
   renderApplicationRound();
   renderHistory();
 
+  if (Game.storyMode && p.id === STORY_ZYAN_ID) {
+    setTimeout(() => finishStoryZyan(approved), 900);
+    return;
+  }
+
   if (Game.health <= 0) {
     Game.health = 0;
     updateFooter();
-    setTimeout(() => endGame(false), 900);
+    setTimeout(() => endGame(Game.storyMode ? 'termination' : false), 900);
     return;
   }
   if (Game.round.every(r => r.decided)) {
-    setTimeout(nextRound, 900);
+    if (Game.storyMode) {
+      Game.storyIndex++;
+      setTimeout(storyAdvance, 900);
+    } else {
+      setTimeout(nextRound, 900);
+    }
   }
 }
 
@@ -558,7 +699,7 @@ function handleScamLinkClick(p, linkEl) {
   if (Game.health <= 0) {
     Game.health = 0;
     updateFooter();
-    setTimeout(() => endGame(false), 900);
+    setTimeout(() => endGame(Game.storyMode ? 'termination' : false), 900);
   }
 }
 
@@ -573,32 +714,42 @@ function showToast(isCorrect, message) {
 
 /* ----------------------- END GAME ----------------------- */
 
-function endGame(completedAll) {
+function endGame(outcome) {
   Game.over = true;
   if (Game.shakeWatcherId) clearInterval(Game.shakeWatcherId);
   document.getElementById('desktop-screen').classList.add('hidden');
   document.getElementById('end-screen').classList.remove('hidden');
-  document.getElementById('end-title').textContent = completedAll ? 'SHIFT COMPLETE' : 'TERMINATED';
-  document.getElementById('end-subtitle').textContent = completedAll
-    ? 'You reviewed every applicant before integrity ran out.'
-    : 'Company integrity reached zero. You have been relieved of duty.';
+
+  if (Game.storyMode) {
+    const ending = STORY_ENDINGS[outcome];
+    document.getElementById('end-screen').classList.toggle('breach-glitch', outcome === 'breach');
+    document.getElementById('end-title').textContent = ending.title;
+    document.getElementById('end-subtitle').textContent = ending.subtitle;
+  } else {
+    document.getElementById('end-title').textContent = outcome ? 'SHIFT COMPLETE' : 'TERMINATED';
+    document.getElementById('end-subtitle').textContent = outcome
+      ? 'You reviewed every applicant before integrity ran out.'
+      : 'Company integrity reached zero. You have been relieved of duty.';
+  }
   document.getElementById('end-score').textContent = Game.score;
   document.getElementById('end-correct').textContent = `${Game.correctCount} / ${Game.caseNumber}`;
   document.getElementById('end-difficulty').textContent = Game.peakDifficulty;
 
-  saveHighScore({
-    score: Game.score,
-    correct: Game.correctCount,
-    total: Game.caseNumber,
-    peakDifficulty: Game.peakDifficulty,
-    date: new Date().toLocaleDateString()
-  });
-  renderHighScores();
+  if (!Game.storyMode) {
+    saveHighScore({
+      score: Game.score,
+      correct: Game.correctCount,
+      total: Game.caseNumber,
+      peakDifficulty: Game.peakDifficulty,
+      date: new Date().toLocaleDateString()
+    });
+    renderHighScores();
+  }
 }
 
 function restartGame() {
   document.getElementById('end-screen').classList.add('hidden');
-  startGame();
+  startGame(Game.storyMode);
 }
 
 /* ----------------------- SHAKE REMINDER ----------------------- */

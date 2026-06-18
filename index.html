@@ -40,11 +40,30 @@
         <input type="password" id="login-pass" value="••••••••••" autocomplete="off">
       </label>
       <button type="submit" id="login-btn">LOG IN</button>
+      <button type="button" id="story-mode-btn">STORY MODE — ZERO TRUST</button>
       <div class="login-status" id="login-status">Status: Awaiting credentials...</div>
     </form>
     <div class="login-footer">UNAUTHORIZED ACCESS IS A VIOLATION OF COMPANY POLICY 4.1.2</div>
   </div>
 </section>
+
+<!-- ============ STORY MODE: SHIFT BRIEFING ============ -->
+<div id="story-briefing" class="story-overlay hidden">
+  <div class="story-box">
+    <div class="story-box-title" id="story-briefing-title">SHIFT 1 BRIEFING</div>
+    <p class="story-box-body" id="story-briefing-body"></p>
+    <button id="story-briefing-btn">BEGIN SHIFT</button>
+  </div>
+</div>
+
+<!-- ============ STORY MODE: FINALE REVEAL ============ -->
+<div id="story-reveal" class="story-overlay hidden">
+  <div class="story-box">
+    <div class="story-box-title" id="story-reveal-title">CASE REVIEW</div>
+    <p class="story-box-body" id="story-reveal-body"></p>
+    <button id="story-reveal-btn">CONTINUE</button>
+  </div>
+</div>
 
 <!-- ============ DESKTOP / MAIN GAME ============ -->
 <section id="desktop-screen" class="screen hidden">
