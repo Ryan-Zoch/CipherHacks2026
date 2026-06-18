@@ -109,6 +109,8 @@ const Game = {
   openWindows: new Set(),
   focusedWindow: null,
   shakeWatcherId: null,
+  shakeTimers: {},
+  topZIndex: 30,
   storyMode: false,
   storyQueue: [],
   storyIndex: 0
@@ -228,6 +230,7 @@ function startGame(storyMode) {
   Game.peakDifficulty = 1;
   Game.correctCount = 0;
   Game.over = false;
+  Game.topZIndex = 30;
   Game.storyIndex = 0;
   Game.storyQueue = Game.storyMode
     ? STORY_ROSTER_IDS.map(id => Game.people.find(p => p.id === id)).filter(Boolean)
@@ -630,6 +633,7 @@ function decideEntry(entry, approved) {
     Game.score += 10 * p.difficulty;
     Game.correctCount++;
     if (!Game.storyMode) {
+      Game.health = Math.min(100, Game.health + 1);
       Game.streak++;
       if (Game.streak >= 2) {
         Game.difficulty = Math.min(5, Game.difficulty + 1);
@@ -771,19 +775,38 @@ function isAppOpenVisible(name) {
   return !!win && !win.classList.contains('hidden') && !win.classList.contains('minimized');
 }
 
+const SHAKE_INTERVAL_MIN = 1500;
+const SHAKE_INTERVAL_MAX = 2500;
+
+function scheduleNextShake(name, fromNow) {
+  if (fromNow) {
+    // Stratify the first wave so icons never all start in lockstep, even with few apps.
+    const idx = REQUIRED_APPS.indexOf(name);
+    const slice = SHAKE_INTERVAL_MAX / REQUIRED_APPS.length;
+    Game.shakeTimers[name] = Date.now() + idx * slice + Math.random() * slice;
+  } else {
+    Game.shakeTimers[name] = Date.now() + SHAKE_INTERVAL_MIN + Math.random() * (SHAKE_INTERVAL_MAX - SHAKE_INTERVAL_MIN);
+  }
+}
+
 function checkShakes() {
   if (Game.over) return;
+  const now = Date.now();
   REQUIRED_APPS.forEach(name => {
     if (isAppOpenVisible(name)) return;
-    const icon = document.querySelector(`.desktop-icon[data-window="${name}"]`);
-    if (icon) triggerShake(icon);
+    if (Game.shakeTimers[name] == null || now >= Game.shakeTimers[name]) {
+      const icon = document.querySelector(`.desktop-icon[data-window="${name}"]`);
+      if (icon) triggerShake(icon);
+      scheduleNextShake(name, false);
+    }
   });
 }
 
 function startShakeWatcher() {
   if (Game.shakeWatcherId) clearInterval(Game.shakeWatcherId);
-  checkShakes();
-  Game.shakeWatcherId = setInterval(checkShakes, 2000);
+  Game.shakeTimers = {};
+  REQUIRED_APPS.forEach(name => scheduleNextShake(name, true));
+  Game.shakeWatcherId = setInterval(checkShakes, 200);
 }
 
 /* ----------------------- WINDOW MANAGEMENT ----------------------- */
@@ -791,7 +814,8 @@ function startShakeWatcher() {
 function bringToFront(win) {
   document.querySelectorAll('.window').forEach(w => w.classList.remove('focused'));
   win.classList.add('focused');
-  win.style.zIndex = 30;
+  Game.topZIndex += 1;
+  win.style.zIndex = Game.topZIndex;
   Game.focusedWindow = win.dataset.window;
   syncTaskbar();
 }
@@ -927,15 +951,26 @@ function startClock() {
 
 /* ----------------------- BOOTSTRAP ----------------------- */
 
+function requestFullscreenSafe() {
+  const el = document.documentElement;
+  const request = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen;
+  if (request) request.call(el).catch(() => {});
+}
+
+function toggleFullscreen() {
+  if (document.fullscreenElement) {
+    const exit = document.exitFullscreen || document.webkitExitFullscreen || document.msExitFullscreen;
+    if (exit) exit.call(document).catch(() => {});
+  } else {
+    requestFullscreenSafe();
+  }
+}
+
 function setupFullscreenPrompt() {
   const prompt = document.getElementById('fullscreen-prompt');
   const dismiss = () => prompt.classList.add('hidden');
   document.getElementById('fullscreen-enter-btn').addEventListener('click', () => {
-    const el = document.documentElement;
-    const request = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen;
-    if (request) {
-      request.call(el).catch(() => {});
-    }
+    requestFullscreenSafe();
     dismiss();
   });
   document.getElementById('fullscreen-skip-btn').addEventListener('click', dismiss);
@@ -947,6 +982,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   setupWindows();
   setupAppNav();
   document.getElementById('restart-btn').addEventListener('click', restartGame);
+  document.getElementById('taskbar-fullscreen-btn').addEventListener('click', toggleFullscreen);
 
   try {
     Game.people = await loadPeople();
