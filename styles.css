@@ -487,6 +487,11 @@ button { font-family: inherit; cursor: pointer; }
   padding: 6px 12px; border-radius: 3px;
 }
 .taskbar-item.active { background: #4a4a4a; color: #fff; border-color: #777; }
+#taskbar-logout-btn {
+  background: #3a2222; color: #ffb3b3; border: 1px solid #6a3a3a; border-radius: 3px;
+  font-size: 10.5px; font-weight: bold; letter-spacing: 0.5px; padding: 6px 10px; flex: 0 0 auto;
+}
+#taskbar-logout-btn:hover { background: #552c2c; color: #fff; border-color: #884444; }
 #taskbar-date { color: #aaa; font-size: 11.5px; }
 #taskbar-clock { color: #ddd; font-size: 12px; }
 
@@ -513,8 +518,68 @@ button { font-family: inherit; cursor: pointer; }
 .end-stats div { display: flex; flex-direction: column; }
 .end-stats span { font-size: 26px; font-weight: bold; }
 .end-stats small { color: #888; font-size: 10px; letter-spacing: 1px; margin-top: 4px; }
+.end-actions { display: flex; gap: 12px; justify-content: center; }
 #restart-btn {
   background: #2a8a4e; color: #fff; border: none; padding: 12px 26px; font-weight: bold;
   letter-spacing: 1px; border-radius: 4px;
 }
 #restart-btn:hover { background: #34a85f; }
+#view-history-btn {
+  background: transparent; color: #ccc; border: 1px solid #555; padding: 12px 22px; font-weight: bold;
+  letter-spacing: 1px; border-radius: 4px;
+}
+#view-history-btn:hover { background: #2a2a2a; color: #fff; border-color: #888; }
+
+/* ===================== DEBRIEF / DETAILED HISTORY ===================== */
+#debrief-overlay {
+  position: fixed; inset: 0; z-index: 200;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(0, 0, 0, 0.78);
+  font-family: "Tahoma", "Segoe UI", Verdana, Arial, sans-serif;
+}
+.debrief-box {
+  width: 640px; max-height: 80vh; overflow-y: auto;
+  background: #fff; color: #222; border-radius: 6px;
+  padding: 22px 26px; box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+}
+.debrief-title { font-size: 16px; font-weight: bold; color: #1a1a1a; margin-bottom: 14px; }
+.debrief-history { margin-bottom: 18px; }
+#debrief-close-btn {
+  background: #1c5fae; color: #fff; border: none; padding: 9px 20px; font-weight: bold;
+  letter-spacing: 1px; border-radius: 4px; font-family: inherit;
+}
+#debrief-close-btn:hover { background: #2a72c8; }
+
+.history-artifact-btns { display: flex; gap: 6px; margin-top: 8px; }
+.history-artifact-btn {
+  background: #fff; border: 1px solid #c9a233; color: #8a6d1f; font-size: 10.5px; font-weight: bold;
+  padding: 5px 10px; border-radius: 3px;
+}
+.history-artifact-btn:hover { background: #fff3d6; }
+.history-artifact-preview {
+  margin-top: 8px; padding: 8px 10px; background: #fff; border: 1px solid #e2d6a8; border-radius: 4px;
+  font-size: 11px; line-height: 1.5; color: #333;
+}
+.history-artifact-preview pre { white-space: pre-wrap; font-family: inherit; margin-top: 4px; }
+.history-artifact-preview ul { margin: 4px 0 4px 16px; }
+.history-artifact-preview .artifact-link { color: #1c5fae; word-break: break-all; }
+
+/* ===================== BOSS NOTIFICATIONS ===================== */
+#boss-notification-layer {
+  position: absolute; top: 14px; right: 14px; z-index: 90;
+  display: flex; flex-direction: column; gap: 10px; width: 280px;
+}
+.boss-notification {
+  background: #fffaf0; border: 1px solid #c9a233; border-left: 4px solid #c9a233;
+  border-radius: 4px; padding: 10px 12px; font-size: 11.5px; line-height: 1.5; color: #4a3a10;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.3);
+  animation: boss-notif-in 0.3s ease;
+}
+.boss-notification.boss-notification-strong {
+  background: #2a0b0b; border-color: #ff3344; border-left-color: #ff3344; color: #ffd9d9;
+}
+.boss-notification-title { font-weight: bold; margin-bottom: 4px; display: block; }
+@keyframes boss-notif-in {
+  0% { transform: translateX(30px); opacity: 0; }
+  100% { transform: translateX(0); opacity: 1; }
+}

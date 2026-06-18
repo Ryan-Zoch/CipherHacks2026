@@ -93,5 +93,11 @@ then visit `http://localhost:8765/index.html`.
 ## Status
 
 Both Endless mode and Story Mode are implemented and tested, including the
-Story Mode glitch-escalation system and finale. `data/people copy.csv` is an
-untracked backup of an earlier draft of the CSV, not used by the game.
+Story Mode glitch-escalation system and finale. `data/people copy.csv` and
+`images copy/` (the original placeholder SVG avatars, pre-photo-swap) are
+leftover backups from earlier drafts and aren't used by the game.
+
+Two profile photos are currently missing from `images/` (`p39.jpeg`,
+`p40.jpeg` — Jerick Hernandez and Zyan Roch, the Story Mode finale
+antagonist); both fall back to the generated initials placeholder via
+`setImgWithFallback()` until real photos are added.

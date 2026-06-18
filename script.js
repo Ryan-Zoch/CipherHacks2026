@@ -153,7 +153,8 @@ const Game = {
   topZIndex: 30,
   storyMode: false,
   storyQueue: [],
-  storyIndex: 0
+  storyIndex: 0,
+  storyWrongfulDenials: 0
 };
 
 /* ----------------------- STORY MODE ----------------------- */
@@ -190,8 +191,19 @@ const STORY_ENDINGS = {
   termination: {
     title: 'TERMINATED',
     subtitle: 'Company integrity is gone, and Security walked you out before the week was over. Somewhere out there, Zyan Roch is still mapping Aegis. Now it’s someone else’s problem.'
+  },
+  deniedTooMany: {
+    title: 'TERMINATED — POOR JUDGMENT',
+    subtitle: 'You denied six qualified applicants this week. The board doesn’t care that the impersonator never got through — they care that Aegis nearly lost six good hires because you couldn’t tell friend from foe. You’re fired, effective immediately. Somewhere out there, Zyan Roch is still mapping Aegis. Now it’s someone else’s problem to catch him.'
   }
 };
+
+const WRONGFUL_DENIAL_WARN_AT = 2;
+const WRONGFUL_DENIAL_THREAT_AT = 4;
+const WRONGFUL_DENIAL_FIRED_AT = 6;
+
+const BOSS_WARN_MESSAGE = 'I’m seeing a pattern of denied applicants who check out fine. We need these hires — ease up on the trigger finger.';
+const BOSS_THREAT_MESSAGE = 'This is the second time I’m flagging this. Four legitimate denials this week. One more and HR gets involved — this is your last warning.';
 
 /* ----------------------- BOOT LOG / LOGIN ----------------------- */
 
@@ -272,12 +284,15 @@ function startGame(storyMode) {
   Game.over = false;
   Game.topZIndex = 30;
   Game.storyIndex = 0;
+  Game.storyWrongfulDenials = 0;
   Game.storyQueue = Game.storyMode
     ? STORY_ROSTER_IDS.map(id => Game.people.find(p => p.id === id)).filter(Boolean)
     : [];
   Game.totalCases = Game.storyMode ? Game.storyQueue.length : Game.people.length;
   document.getElementById('crash-overlay').classList.add('hidden');
   document.getElementById('intrusion-popup-layer').innerHTML = '';
+  document.getElementById('boss-notification-layer').innerHTML = '';
+  document.getElementById('debrief-overlay').classList.add('hidden');
   document.getElementById('desktop-screen').classList.remove('mega-glitch');
   document.querySelectorAll('.window').forEach(w => w.classList.remove('window-glitched'));
   document.querySelector('.app-stats-bar').classList.toggle('story-minimal', Game.storyMode);
@@ -426,6 +441,21 @@ function triggerMegaGlitchAndCrash(onComplete) {
       onComplete();
     }, 1800);
   }, 900);
+}
+
+function showBossNotification(message, strong) {
+  const layer = document.getElementById('boss-notification-layer');
+  const note = document.createElement('div');
+  note.className = 'boss-notification' + (strong ? ' boss-notification-strong' : '');
+  const title = document.createElement('span');
+  title.className = 'boss-notification-title';
+  title.textContent = strong ? '⚠ Message from the Boss' : '📋 Message from the Boss';
+  const body = document.createElement('span');
+  body.textContent = message;
+  note.appendChild(title);
+  note.appendChild(body);
+  layer.appendChild(note);
+  setTimeout(() => note.remove(), 7000);
 }
 
 function finishStoryZyan(approved) {
@@ -627,8 +657,51 @@ function renderApplicationRound() {
   });
 }
 
-function renderHistory() {
-  const el = document.getElementById('app-history');
+function renderArtifactPreview(container, kind, person) {
+  container.innerHTML = '';
+  container.classList.remove('hidden');
+  if (kind === 'linkedin') {
+    const name = document.createElement('div');
+    name.innerHTML = `<strong>${person.name}</strong> — ${person.li.headline || ''}`;
+    const meta = document.createElement('div');
+    meta.textContent = `${person.li.company || ''} · ${person.li.location || ''}`;
+    const bio = document.createElement('p');
+    bio.textContent = person.li.bio || '';
+    const exp = document.createElement('ul');
+    person.li.experience.forEach(line => {
+      const li = document.createElement('li');
+      li.textContent = line;
+      exp.appendChild(li);
+    });
+    const edu = document.createElement('div');
+    edu.textContent = person.li.education || '';
+    container.append(name, meta, bio, exp, edu);
+  } else if (kind === 'email') {
+    if (!person.email) { container.textContent = 'No email on file.'; return; }
+    const subject = document.createElement('div');
+    subject.innerHTML = `<strong>${person.email.subject}</strong>`;
+    const from = document.createElement('div');
+    from.textContent = `From: ${person.email.senderName} <${person.email.senderAddress}>`;
+    const body = document.createElement('pre');
+    body.textContent = person.email.body;
+    container.append(subject, from, body);
+  } else if (kind === 'text') {
+    if (!person.text) { container.textContent = 'No text on file.'; return; }
+    const from = document.createElement('div');
+    from.innerHTML = `<strong>${person.text.sender}</strong>`;
+    const body = document.createElement('p');
+    body.textContent = person.text.body;
+    container.append(from, body);
+    if (person.text.link) {
+      const link = document.createElement('div');
+      link.className = 'artifact-link';
+      link.textContent = person.text.link;
+      container.appendChild(link);
+    }
+  }
+}
+
+function renderHistoryList(el, revealCorrectness) {
   el.innerHTML = '';
   if (Game.history.length === 0) {
     const empty = document.createElement('div');
@@ -643,7 +716,7 @@ function renderHistory() {
     const left = document.createElement('span');
     left.textContent = `${h.name} — ${h.decisionLabel}`;
     row.appendChild(left);
-    if (!Game.storyMode) {
+    if (revealCorrectness) {
       const right = document.createElement('span');
       right.className = h.correct ? 'hist-correct' : 'hist-wrong';
       right.textContent = h.correct ? 'CORRECT' : 'WRONG';
@@ -660,9 +733,34 @@ function renderHistory() {
       reason.textContent = FAKE_REASONS[h.id];
       details.appendChild(summary);
       details.appendChild(reason);
+
+      const btnRow = document.createElement('div');
+      btnRow.className = 'history-artifact-btns';
+      const preview = document.createElement('div');
+      preview.className = 'history-artifact-preview hidden';
+      [['linkedin', 'LinkedIn'], ['email', 'Email'], ['text', 'Text']].forEach(([kind, label]) => {
+        const btn = document.createElement('button');
+        btn.className = 'history-artifact-btn';
+        btn.textContent = label;
+        btn.addEventListener('click', () => {
+          const person = Game.people.find(pp => pp.id === h.id);
+          if (person) renderArtifactPreview(preview, kind, person);
+        });
+        btnRow.appendChild(btn);
+      });
+      details.appendChild(btnRow);
+      details.appendChild(preview);
       el.appendChild(details);
     }
   });
+}
+
+function renderHistory() {
+  renderHistoryList(document.getElementById('app-history'), !Game.storyMode);
+}
+
+function renderDebrief() {
+  renderHistoryList(document.getElementById('debrief-history'), true);
 }
 
 function loadHighScores() {
@@ -745,7 +843,9 @@ function decideEntry(entry, approved) {
     Game.score += 10 * p.difficulty;
     Game.correctCount++;
     if (!Game.storyMode) {
-      Game.health = Math.min(100, Game.health + 1);
+      if (approved && !p.isFake) {
+        Game.health = Math.min(100, Game.health + 1);
+      }
       Game.streak++;
       if (Game.streak >= 2) {
         Game.difficulty = Math.min(5, Game.difficulty + 1);
@@ -766,6 +866,13 @@ function decideEntry(entry, approved) {
         : `Mistake! ${p.name} was a real hire, wrongly denied. -${damage}% integrity.`);
     } else if (approved && p.isFake && p.id !== STORY_ZYAN_ID) {
       triggerStoryFakeGlitch(p.difficulty);
+    } else if (!approved && !p.isFake) {
+      Game.storyWrongfulDenials++;
+      if (Game.storyWrongfulDenials === WRONGFUL_DENIAL_WARN_AT) {
+        showBossNotification(BOSS_WARN_MESSAGE, false);
+      } else if (Game.storyWrongfulDenials === WRONGFUL_DENIAL_THREAT_AT) {
+        showBossNotification(BOSS_THREAT_MESSAGE, true);
+      }
     }
   }
   Game.peakDifficulty = Math.max(Game.peakDifficulty, Game.difficulty);
@@ -780,6 +887,11 @@ function decideEntry(entry, approved) {
   updateFooter();
   renderApplicationRound();
   renderHistory();
+
+  if (Game.storyMode && Game.storyWrongfulDenials >= WRONGFUL_DENIAL_FIRED_AT) {
+    setTimeout(() => endGame('deniedTooMany'), 900);
+    return;
+  }
 
   if (Game.storyMode && p.id === STORY_ZYAN_ID) {
     setTimeout(() => finishStoryZyan(approved), 900);
@@ -866,6 +978,20 @@ function endGame(outcome) {
 function restartGame() {
   document.getElementById('end-screen').classList.add('hidden');
   startGame(Game.storyMode);
+}
+
+function logout() {
+  Game.over = true;
+  if (Game.shakeWatcherId) clearInterval(Game.shakeWatcherId);
+  document.getElementById('desktop-screen').classList.add('hidden');
+  document.getElementById('end-screen').classList.add('hidden');
+  document.getElementById('debrief-overlay').classList.add('hidden');
+  document.getElementById('story-briefing').classList.add('hidden');
+  document.getElementById('story-reveal').classList.add('hidden');
+  document.getElementById('crash-overlay').classList.add('hidden');
+  document.getElementById('login-status').textContent = 'Status: Awaiting credentials...';
+  document.getElementById('login-screen').classList.remove('hidden');
+  runBootLog();
 }
 
 /* ----------------------- SHAKE REMINDER ----------------------- */
@@ -1095,6 +1221,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   setupAppNav();
   document.getElementById('restart-btn').addEventListener('click', restartGame);
   document.getElementById('taskbar-fullscreen-btn').addEventListener('click', toggleFullscreen);
+  document.getElementById('taskbar-logout-btn').addEventListener('click', logout);
+  document.getElementById('view-history-btn').addEventListener('click', () => {
+    renderDebrief();
+    document.getElementById('debrief-overlay').classList.remove('hidden');
+  });
+  document.getElementById('debrief-close-btn').addEventListener('click', () => {
+    document.getElementById('debrief-overlay').classList.add('hidden');
+  });
 
   try {
     Game.people = await loadPeople();

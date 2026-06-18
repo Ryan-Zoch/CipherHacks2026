@@ -286,12 +286,16 @@
   <nav id="taskbar">
     <button id="taskbar-fullscreen-btn" title="Toggle full screen">&#9974;</button>
     <div id="taskbar-windows"></div>
+    <button id="taskbar-logout-btn" title="Log out">LOG OUT</button>
     <div id="taskbar-date">06/17/2026</div>
     <div id="taskbar-clock">9:41 AM</div>
   </nav>
 
   <!-- Feedback toast -->
   <div id="feedback-toast" class="hidden"></div>
+
+  <!-- Boss notifications (Story Mode) -->
+  <div id="boss-notification-layer"></div>
 </section>
 
 <!-- ============ END SCREEN ============ -->
@@ -304,9 +308,21 @@
       <div><span id="end-correct">0</span><small>CORRECT CALLS</small></div>
       <div><span id="end-difficulty">1</span><small>PEAK THREAT LEVEL</small></div>
     </div>
-    <button id="restart-btn">RESTART SHIFT</button>
+    <div class="end-actions">
+      <button id="view-history-btn">VIEW DETAILED HISTORY</button>
+      <button id="restart-btn">RESTART SHIFT</button>
+    </div>
   </div>
 </section>
+
+<!-- ============ DEBRIEF: DETAILED HISTORY ============ -->
+<div id="debrief-overlay" class="hidden">
+  <div class="debrief-box">
+    <div class="debrief-title">CASE HISTORY</div>
+    <div id="debrief-history" class="app-history debrief-history"></div>
+    <button id="debrief-close-btn">CLOSE</button>
+  </div>
+</div>
 
 <script src="script.js"></script>
 </body>
