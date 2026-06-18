@@ -39,7 +39,7 @@
       <label>PASSWORD
         <input type="password" id="login-pass" value="••••••••••" autocomplete="off">
       </label>
-      <button type="button" id="story-mode-btn">STORY MODE — ZERO TRUST</button>
+      <button type="button" id="story-mode-btn">STORY MODE</button>
       <button type="submit" id="login-btn">ENDLESS MODE</button>
       <div class="login-status" id="login-status">Status: Awaiting credentials...</div>
     </form>
@@ -65,8 +65,14 @@
   </div>
 </div>
 
+<!-- ============ STORY MODE: SYSTEM CRASH ============ -->
+<div id="crash-overlay" class="hidden">
+  <div class="crash-text">SYSTEM FAILURE</div>
+</div>
+
 <!-- ============ DESKTOP / MAIN GAME ============ -->
 <section id="desktop-screen" class="screen hidden">
+  <div id="intrusion-popup-layer"></div>
 
   <!-- Desktop icons -->
   <div id="desktop-icons">
@@ -233,24 +239,24 @@
     </div>
     <div class="window-body application-body">
       <header class="app-stats-bar">
-        <div class="app-stat">
+        <div class="app-stat app-stat-integrity">
           <span class="app-stat-label">COMPANY INTEGRITY</span>
           <div class="health-bar"><div class="health-bar-fill" id="health-fill"></div></div>
           <span class="app-stat-value" id="health-value">100%</span>
         </div>
-        <div class="app-stat">
+        <div class="app-stat app-stat-case">
           <span class="app-stat-label">CASE</span>
           <span class="app-stat-value" id="case-count">0 / 0</span>
         </div>
-        <div class="app-stat">
+        <div class="app-stat app-stat-threat">
           <span class="app-stat-label">THREAT LEVEL</span>
           <span class="app-stat-value" id="difficulty-value">1</span>
         </div>
-        <div class="app-stat">
+        <div class="app-stat app-stat-approval">
           <span class="app-stat-label">APPROVAL RATING</span>
           <span class="app-stat-value" id="approval-rating">100%</span>
         </div>
-        <div class="app-stat">
+        <div class="app-stat app-stat-score">
           <span class="app-stat-label">SCORE</span>
           <span class="app-stat-value" id="score-value">0</span>
         </div>
@@ -258,16 +264,13 @@
       <div class="app-main">
         <nav class="app-sidebar">
           <button class="app-nav-btn active" data-page="round">This Round</button>
-          <button class="app-nav-btn" data-page="history">History</button>
           <button class="app-nav-btn" data-page="highscores">High Scores</button>
         </nav>
         <div class="app-pages">
           <section class="app-page active" id="app-page-round">
             <h3>This Round</h3>
             <div id="app-candidates" class="app-candidates"></div>
-          </section>
-          <section class="app-page" id="app-page-history">
-            <h3>History</h3>
+            <h3 class="app-history-heading">History</h3>
             <div id="app-history" class="app-history"></div>
           </section>
           <section class="app-page" id="app-page-highscores">

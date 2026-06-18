@@ -79,6 +79,46 @@ function normalizePerson(row) {
   };
 }
 
+function setImgWithFallback(imgEl, src, fallbackInitials) {
+  imgEl.onerror = () => {
+    imgEl.onerror = null;
+    const initials = (fallbackInitials || '?').slice(0, 2).toUpperCase();
+    imgEl.src = 'data:image/svg+xml;utf8,' + encodeURIComponent(
+      `<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80">` +
+      `<rect width="80" height="80" fill="#5a6b7a"/>` +
+      `<text x="40" y="48" font-family="Tahoma,Arial,sans-serif" font-size="28" fill="#fff" text-anchor="middle">${initials}</text>` +
+      `</svg>`
+    );
+  };
+  imgEl.src = src;
+}
+
+/* ----------------------- STORY MODE: FAKE REASONS ----------------------- */
+
+const FAKE_REASONS = {
+  31: 'Scam email domain (freemoneynow-jobs.biz), demands login credentials before starting, and the text links to a fake "pre-approved badge" claim — a classic advance-fee/phishing scam.',
+  32: 'Sender domain is a typosquat (aisolutions-glabal.com instead of aisolutions-global.com), and the email requests VPN access and an administrator login before he\'s even hired.',
+  33: 'Asks for a temporary login to "audit" the network before being hired, then follows up asking you to approve an MFA push for his account — a classic MFA-fatigue social engineering attempt.',
+  34: 'Personal email is a .ru domain, and he asks that all offer paperwork and login credentials be redirected to a third party\'s email (zyan.roch.helper@mail.ru) — a name that resurfaces later.',
+  35: 'Bio inconsistently switches between first- and third-person ("Robert is a hard worker... his deadlines"), the listed gender doesn\'t match the name/pronouns, and the email domain is a typosquat (globaIcorp.com, capital I instead of lowercase l).',
+  36: 'Job history is inconsistent (claims Science Teacher but his own LinkedIn experience says English Teacher), his email domain is a typo of gmail.com (gmial.com), and he asks you to enable macros to view an attachment — a textbook malicious-document tell.',
+  37: 'Asks you, the hiring screener, to verify your own employee ID and Social Security number over text — a real HR rep would never request that, especially not via SMS.',
+  38: 'Profile lists him as 12 years old, but his email and text claim he\'s 21 and a Harvard graduate — the application openly contradicts itself.',
+  39: 'Email and link domains are typosquats of Outlook (outlo0k.com, outlo0k-secure-login.cf), and his "grandson" asks for your administrator password before he even starts.',
+  40: 'Domain is a one-letter typosquat of aegisdynamics.com (aegisdynarnics.com — "rn" standing in for "m"), and he asks you to approve an MFA push from an unfamiliar phone number while claiming technical difficulties — the same impersonation pattern flagged back on Shift 2.',
+  41: 'Email claims 40 years of software/cybersecurity experience that has nothing to do with his actual LinkedIn background as a mechanical engineer, and the sender domain (securemail-verify.com) is a generic phishing-style domain, not his employer\'s.',
+  42: 'Claims a "hardware anomaly" on your workstation and asks for your username and password to fix it — credential phishing dressed up as IT support, from a domain (techcorp-support.net) that isn\'t his employer\'s real domain.',
+  43: 'Sender domain doesn\'t match his stated employer (Independent Legal Partners vs. legal-defense-firm.com), and he asks for your proof of employment and personal information while threatening termination if you don\'t comply.',
+  44: 'Sender domain doesn\'t match her stated employer, and the link in her text is a typosquat of your own company\'s domain (agisdynamics.net is missing the "e" in Aegis) — pointing employees to a fake internal portal.',
+  45: 'Email subject is an unrelated invoice rather than a job application, and the "LinkedIn" link he texts you points to linkedin.net, not the real linkedin.com — a typosquatted domain.',
+  46: 'Asks the company to pay "hiring fees" before he starts (backwards for a real hire), and the link he wants you to approve points to paypaL.net — a typosquat of PayPal with no connection to the job.',
+  47: 'Pushes you to immediately execute an attached "verification script" under urgent, hype-heavy language, and the link he sends is github.net — a typosquat of github.com.',
+  48: 'The portfolio link he sends (sites.googIe.com) uses a capital I in place of a lowercase l to impersonate Google Sites — a classic homoglyph typosquat.',
+  49: 'Asks you to double-click an .exe file attached to his "resume" — a real resume is never a Windows executable.',
+  50: 'Asks for edit access to the company\'s internal Google Drive before she\'s even hired, framed as just needing to drop off a resume — an unnecessary and risky permission request.',
+  51: 'Sender domain is the same "rn-for-m" typosquat as the Zyan Roch impersonation (aegisdynarnics.com), and the linked document uses another typosquat (docs.googIe.com) — someone is impersonating your own CEO to get an internal document opened.'
+};
+
 /* ----------------------- GAME STATE ----------------------- */
 
 const REQUIRED_APPS = ['linkedin', 'email', 'text', 'application'];
@@ -116,7 +156,7 @@ const Game = {
   storyIndex: 0
 };
 
-/* ----------------------- STORY MODE: ZERO TRUST ----------------------- */
+/* ----------------------- STORY MODE ----------------------- */
 
 const STORY_SHIFTS = [
   { ids: [1, 31, 3, 38, 11] },
@@ -236,6 +276,11 @@ function startGame(storyMode) {
     ? STORY_ROSTER_IDS.map(id => Game.people.find(p => p.id === id)).filter(Boolean)
     : [];
   Game.totalCases = Game.storyMode ? Game.storyQueue.length : Game.people.length;
+  document.getElementById('crash-overlay').classList.add('hidden');
+  document.getElementById('intrusion-popup-layer').innerHTML = '';
+  document.getElementById('desktop-screen').classList.remove('mega-glitch');
+  document.querySelectorAll('.window').forEach(w => w.classList.remove('window-glitched'));
+  document.querySelector('.app-stats-bar').classList.toggle('story-minimal', Game.storyMode);
 
   renderHistory();
   updateFooter();
@@ -335,9 +380,62 @@ function triggerGlitch() {
   setTimeout(() => desktop.classList.remove('glitch-flash'), 500);
 }
 
+function spawnIntrusionPopup() {
+  const layer = document.getElementById('intrusion-popup-layer');
+  const popup = document.createElement('div');
+  popup.className = 'intrusion-popup';
+  popup.style.top = (10 + Math.random() * 55) + '%';
+  popup.style.left = (10 + Math.random() * 55) + '%';
+  popup.innerHTML =
+    '<div class="intrusion-popup-title">⚠ SYSTEM ALERT</div>' +
+    '<p>Unauthorized access detected on this session.</p>' +
+    '<button class="intrusion-popup-close">DISMISS</button>';
+  popup.querySelector('.intrusion-popup-close').addEventListener('click', () => popup.remove());
+  layer.appendChild(popup);
+}
+
+function glitchWindowsTemporarily(durationMs) {
+  document.querySelectorAll('.window').forEach(w => w.classList.add('window-glitched'));
+  setTimeout(() => {
+    document.querySelectorAll('.window').forEach(w => w.classList.remove('window-glitched'));
+  }, durationMs);
+}
+
+function triggerStoryFakeGlitch(difficulty) {
+  triggerGlitch();
+  if (difficulty >= 5) {
+    spawnIntrusionPopup();
+    spawnIntrusionPopup();
+    spawnIntrusionPopup();
+    glitchWindowsTemporarily(5000);
+  } else if (difficulty >= 3) {
+    spawnIntrusionPopup();
+    spawnIntrusionPopup();
+  }
+}
+
+function triggerMegaGlitchAndCrash(onComplete) {
+  const desktop = document.getElementById('desktop-screen');
+  desktop.classList.add('mega-glitch');
+  setTimeout(() => {
+    desktop.classList.remove('mega-glitch');
+    const crash = document.getElementById('crash-overlay');
+    crash.classList.remove('hidden');
+    setTimeout(() => {
+      crash.classList.add('hidden');
+      onComplete();
+    }, 1800);
+  }, 900);
+}
+
 function finishStoryZyan(approved) {
-  const text = approved ? STORY_FINALE_REVEAL.approved : STORY_FINALE_REVEAL.denied;
-  showStoryReveal(text, () => endGame(approved ? 'breach' : 'good'));
+  if (approved) {
+    triggerMegaGlitchAndCrash(() => {
+      showStoryReveal(STORY_FINALE_REVEAL.approved, () => endGame('breach'));
+    });
+  } else {
+    showStoryReveal(STORY_FINALE_REVEAL.denied, () => endGame('good'));
+  }
 }
 
 /* ----------------------- ROUND / APPLICANT SELECTION ----------------------- */
@@ -411,7 +509,7 @@ function renderLinkedinWindow(p) {
   }
   emptyEl.classList.add('hidden');
   contentEl.classList.remove('hidden');
-  document.getElementById('li-pfp').src = p.pfp;
+  setImgWithFallback(document.getElementById('li-pfp'), p.pfp, p.name);
   document.getElementById('li-pfp').style.transform = `scale(${p.pfpScale})`;
   document.getElementById('li-name').textContent = p.name;
   document.getElementById('li-headline').textContent = p.li.headline || ' ';
@@ -458,7 +556,7 @@ function renderTextWindow(p) {
   }
   emptyEl.classList.add('hidden');
   contentEl.classList.remove('hidden');
-  document.getElementById('text-pfp').src = p.pfp;
+  setImgWithFallback(document.getElementById('text-pfp'), p.pfp, p.name);
   document.getElementById('text-contact-name').textContent = p.text.sender;
   document.getElementById('text-applicant-line').textContent = `Age: ${p.age || '-'} | ${p.job || 'Unknown role'}`;
   const thread = document.getElementById('phone-thread');
@@ -492,7 +590,7 @@ function renderApplicationRound() {
     card.className = 'app-candidate-card' + (entry.decided ? ' decided' : '');
 
     const img = document.createElement('img');
-    img.src = p.pfp;
+    setImgWithFallback(img, p.pfp, p.name);
     card.appendChild(img);
 
     const info = document.createElement('div');
@@ -544,12 +642,26 @@ function renderHistory() {
     row.className = 'app-history-row';
     const left = document.createElement('span');
     left.textContent = `${h.name} — ${h.decisionLabel}`;
-    const right = document.createElement('span');
-    right.className = h.correct ? 'hist-correct' : 'hist-wrong';
-    right.textContent = h.correct ? 'CORRECT' : 'WRONG';
     row.appendChild(left);
-    row.appendChild(right);
+    if (!Game.storyMode) {
+      const right = document.createElement('span');
+      right.className = h.correct ? 'hist-correct' : 'hist-wrong';
+      right.textContent = h.correct ? 'CORRECT' : 'WRONG';
+      row.appendChild(right);
+    }
     el.appendChild(row);
+
+    if (h.isFake && FAKE_REASONS[h.id]) {
+      const details = document.createElement('details');
+      details.className = 'app-history-details';
+      const summary = document.createElement('summary');
+      summary.textContent = 'Why was this flagged?';
+      const reason = document.createElement('p');
+      reason.textContent = FAKE_REASONS[h.id];
+      details.appendChild(summary);
+      details.appendChild(reason);
+      el.appendChild(details);
+    }
   });
 }
 
@@ -639,31 +751,30 @@ function decideEntry(entry, approved) {
         Game.difficulty = Math.min(5, Game.difficulty + 1);
         Game.streak = 0;
       }
+      showToast(true, approved
+        ? `Correct - ${p.name} was a legitimate hire.`
+        : `Correct - ${p.name} was flagged and denied.`);
     }
-    showToast(true, approved
-      ? `Correct - ${p.name} was a legitimate hire.`
-      : `Correct - ${p.name} was flagged and denied.`);
   } else {
     const damage = 8 + p.difficulty * 4;
     Game.health -= damage;
     if (!Game.storyMode) {
       Game.streak = 0;
       Game.difficulty = Math.max(1, Game.difficulty - 1);
-    }
-    if (Game.storyMode && approved && p.isFake) {
-      triggerGlitch();
-      showToast(false, '⚠ INTRUSION DETECTED — you granted access to a hostile actor. Company integrity takes the hit.');
-    } else {
       showToast(false, approved
         ? `Mistake! ${p.name} was a fraudulent applicant. -${damage}% integrity.`
         : `Mistake! ${p.name} was a real hire, wrongly denied. -${damage}% integrity.`);
+    } else if (approved && p.isFake && p.id !== STORY_ZYAN_ID) {
+      triggerStoryFakeGlitch(p.difficulty);
     }
   }
   Game.peakDifficulty = Math.max(Game.peakDifficulty, Game.difficulty);
   Game.history.unshift({
     name: p.name,
     decisionLabel: approved ? p.approveLabel : p.denyLabel,
-    correct
+    correct,
+    id: p.id,
+    isFake: p.isFake
   });
 
   updateFooter();
@@ -699,6 +810,7 @@ function handleScamLinkClick(p, linkEl) {
   const damage = 10 + p.difficulty * 3;
   Game.health -= damage;
   updateFooter();
+  if (Game.storyMode) triggerGlitch();
   showToast(false, `You clicked a suspicious link from ${p.name}! -${damage}% integrity.`);
   if (Game.health <= 0) {
     Game.health = 0;

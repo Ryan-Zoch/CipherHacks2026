@@ -159,6 +159,59 @@ button { font-family: inherit; cursor: pointer; }
 #end-screen.breach-glitch #end-title { animation: breach-corruption 0.4s steps(2, end) infinite; color: #ff5566; }
 #end-screen.breach-glitch { background: radial-gradient(circle at 50% 30%, #2a0b0b 0%, #140404 60%, #000 100%); }
 
+/* Windows visually corrupted for a few seconds (high-severity fake approved) */
+@keyframes window-glitch-loop {
+  0%, 100% { filter: none; transform: translate(0, 0); }
+  20% { filter: hue-rotate(120deg) saturate(4) contrast(1.4); transform: translate(-3px, 1px); }
+  40% { filter: invert(0.8) hue-rotate(200deg); transform: translate(3px, -1px); }
+  60% { filter: hue-rotate(280deg) saturate(3); transform: translate(-2px, 2px); }
+  80% { filter: brightness(1.6) contrast(1.6); transform: translate(2px, -2px); }
+}
+.window-glitched { animation: window-glitch-loop 0.25s steps(2, end) infinite; }
+
+/* Mega glitch on the whole desktop right before a system "crash" */
+@keyframes mega-glitch {
+  0%, 100% { filter: none; transform: translate(0, 0); }
+  10% { filter: invert(1) hue-rotate(90deg); transform: translate(-8px, 4px); }
+  25% { filter: brightness(2.4) saturate(4); transform: translate(8px, -4px); }
+  40% { filter: invert(1) hue-rotate(260deg); transform: translate(-6px, -6px); }
+  55% { filter: contrast(2) hue-rotate(40deg); transform: translate(6px, 6px); }
+  70% { filter: brightness(0.3); transform: translate(-10px, 2px); }
+  85% { filter: invert(0.6) saturate(6); transform: translate(10px, -2px); }
+}
+.mega-glitch { animation: mega-glitch 0.18s steps(2, end) infinite; }
+
+#crash-overlay {
+  position: fixed; inset: 0; z-index: 500;
+  background: #000;
+  display: flex; align-items: center; justify-content: center;
+}
+#crash-overlay .crash-text {
+  font-family: "Consolas", "Courier New", monospace;
+  font-size: 28px; font-weight: bold; letter-spacing: 4px; color: #ff3344;
+  animation: breach-corruption 0.25s steps(2, end) infinite;
+}
+
+/* Flashy intrusion popups the player must close */
+#intrusion-popup-layer { position: absolute; inset: 0; z-index: 80; pointer-events: none; }
+.intrusion-popup {
+  position: absolute; width: 220px; pointer-events: auto;
+  background: #2a0b0b; border: 2px solid #ff3344; border-radius: 4px;
+  padding: 12px 14px; color: #ffd9d9; font-size: 11px; line-height: 1.5;
+  box-shadow: 0 0 24px rgba(255, 51, 68, 0.6);
+  animation: popup-flash 0.6s steps(2, end) infinite;
+}
+@keyframes popup-flash {
+  0%, 100% { border-color: #ff3344; box-shadow: 0 0 24px rgba(255, 51, 68, 0.6); }
+  50% { border-color: #ffd24d; box-shadow: 0 0 24px rgba(255, 210, 77, 0.6); }
+}
+.intrusion-popup-title { font-weight: bold; color: #ff6b6b; margin-bottom: 6px; letter-spacing: 1px; }
+.intrusion-popup-close {
+  margin-top: 10px; width: 100%; background: #4a1010; border: 1px solid #ff3344; color: #ffd9d9;
+  font-size: 10.5px; font-weight: bold; letter-spacing: 1px; padding: 6px;
+}
+.intrusion-popup-close:hover { background: #6a1616; }
+
 /* ===================== SHAKE REMINDER ===================== */
 @keyframes shake {
   0%, 100% { transform: translateX(0); }
@@ -380,6 +433,13 @@ button { font-family: inherit; cursor: pointer; }
 .app-history-row .hist-correct { color: #2a8a4e; font-weight: bold; }
 .app-history-row .hist-wrong { color: #b3332c; font-weight: bold; }
 .app-history-empty { color: #888; font-style: italic; font-size: 12px; text-align: center; margin-top: 10px; }
+.app-history-heading { margin-top: 18px; }
+.app-history-details {
+  margin: -2px 0 6px 0; padding: 6px 10px; background: #fff8e6; border-left: 3px solid #e0a82e;
+  font-size: 11px; color: #5a4a1f;
+}
+.app-history-details summary { cursor: pointer; font-weight: bold; color: #8a6d1f; }
+.app-history-details p { margin-top: 5px; line-height: 1.5; }
 .app-highscores { display: flex; flex-direction: column; gap: 6px; }
 .app-highscore-row {
   display: flex; align-items: center; gap: 10px; font-size: 11.5px; color: #333;
@@ -390,14 +450,16 @@ button { font-family: inherit; cursor: pointer; }
 .app-highscore-meta { color: #888; }
 .app-stats-bar {
   display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
-  background: linear-gradient(to bottom, #2b2b2b, #161616); border-bottom: 2px solid #444;
-  padding: 10px 16px; color: #eee; font-size: 11px; flex: 0 0 auto;
+  background: #eef0f2; border-bottom: 1px solid #c8c8c8;
+  padding: 10px 16px; color: #333; font-size: 11px; flex: 0 0 auto;
 }
+.app-stats-bar.story-minimal .app-stat { display: none; }
+.app-stats-bar.story-minimal .app-stat-case { display: flex; }
 .app-stat { display: flex; align-items: center; gap: 6px; }
-.app-stat-label { color: #999; font-size: 9.5px; letter-spacing: 1px; }
-.app-stat-value { font-weight: bold; color: #fff; }
+.app-stat-label { color: #777; font-size: 9.5px; letter-spacing: 1px; }
+.app-stat-value { font-weight: bold; color: #1a1a1a; }
 .health-bar {
-  width: 110px; height: 10px; background: #3a3a3a; border: 1px solid #555;
+  width: 110px; height: 10px; background: #ddd; border: 1px solid #bbb;
 }
 .health-bar-fill {
   height: 100%; width: 100%; background: linear-gradient(to right, #3ddc6a, #7ee787);
