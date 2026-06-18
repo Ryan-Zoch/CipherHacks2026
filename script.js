@@ -60,9 +60,9 @@ function normalizePerson(row) {
       location: row.li_location,
       experience: row.li_experience ? row.li_experience.split('|').map(s => s.trim()).filter(Boolean) : [],
       education: row.li_education,
-      mutuals: row.li_mutuals
+      mutuals: row.li_mutuals,
+      bio: row.li_bio
     },
-    bg: { status: row.bg_status, detail: row.bg_detail },
     email: row.email_subject ? {
       subject: row.email_subject,
       senderName: row.email_sender_name,
@@ -81,10 +81,22 @@ function normalizePerson(row) {
 
 /* ----------------------- GAME STATE ----------------------- */
 
+const REQUIRED_APPS = ['linkedin', 'email', 'text', 'application'];
+const HIGH_SCORE_KEY = 'aegisHighScores';
+const MAX_HIGH_SCORES = 10;
+
+// Set to 1 for a single shared applicant shown on all three platforms,
+// or 3 for three separate applicants each appearing on one platform.
+const APPLICANTS_PER_ROUND = 1;
+const PLATFORMS = ['linkedin', 'email', 'text'];
+const PLATFORM_LABELS = { linkedin: 'LinkedOut', email: 'MailHub', text: 'PingMe' };
+
 const Game = {
   people: [],
   pool: [],
-  current: null,
+  round: [],
+  history: [],
+  linkClicked: new Set(),
   health: 100,
   score: 0,
   difficulty: 1,
@@ -95,7 +107,8 @@ const Game = {
   correctCount: 0,
   over: false,
   openWindows: new Set(),
-  focusedWindow: null
+  focusedWindow: null,
+  shakeWatcherId: null
 };
 
 /* ----------------------- BOOT LOG / LOGIN ----------------------- */
@@ -131,14 +144,9 @@ function setupLogin() {
     status.textContent = 'Status: Authenticating...';
     setTimeout(() => {
       status.textContent = 'Status: Access granted.';
-      setTimeout(showBriefing, 500);
+      setTimeout(startGame, 500);
     }, 700);
   });
-}
-
-function showBriefing() {
-  document.getElementById('login-screen').classList.add('hidden');
-  document.getElementById('briefing-screen').classList.remove('hidden');
 }
 
 /* ----------------------- GAME INIT ----------------------- */
@@ -151,10 +159,14 @@ async function loadPeople() {
 }
 
 function startGame() {
-  document.getElementById('briefing-screen').classList.add('hidden');
+  document.getElementById('login-screen').classList.add('hidden');
+  document.getElementById('end-screen').classList.add('hidden');
   document.getElementById('desktop-screen').classList.remove('hidden');
 
   Game.pool = Game.people.slice();
+  Game.round = [];
+  Game.history = [];
+  Game.linkClicked = new Set();
   Game.health = 100;
   Game.score = 0;
   Game.difficulty = 1;
@@ -165,16 +177,48 @@ function startGame() {
   Game.correctCount = 0;
   Game.over = false;
 
-  updateHud();
-  nextApplicant();
+  renderHistory();
+  updateFooter();
+  updateTipsCopy();
+  nextRound();
   startClock();
+  openWindow('tips');
+  centerWindow(document.getElementById('window-tips'));
+  startShakeWatcher();
 }
 
-/* ----------------------- APPLICANT SELECTION ----------------------- */
+function updateTipsCopy() {
+  const body = document.querySelector('#window-tips .tips-body');
+  if (!body) return;
+  if (APPLICANTS_PER_ROUND === 1) {
+    body.querySelector('h2 + p').innerHTML =
+      'Each shift, one candidate applies at a time &mdash; and they show up identically on ' +
+      '<strong>LinkedOut</strong>, <strong>MailHub</strong>, and <strong>PingMe</strong>. Cross-reference all three before you decide.';
+    body.querySelector('ul').innerHTML =
+      '<li>Open LinkedOut, MailHub, and PingMe &mdash; all three show the same candidate.</li>' +
+      '<li>Open the <strong>Case File</strong> &mdash; the only place to Approve or Deny, with full history.</li>' +
+      '<li>Watch for typos, mismatched names, urgent demands, and suspicious links.</li>' +
+      '<li>Clicking a suspicious link costs integrity, just like a wrong decision.</li>' +
+      '<li>Integrity, Score, Case count, and Threat Level live at the top of the Case File.</li>' +
+      '<li>Drag windows by their title bar, resize them from the bottom-right corner.</li>';
+  } else {
+    body.querySelector('h2 + p').innerHTML =
+      'Each shift, up to three candidates apply at once &mdash; one each on ' +
+      '<strong>LinkedOut</strong>, <strong>MailHub</strong>, and <strong>PingMe</strong>. Check every app every round.';
+    body.querySelector('ul').innerHTML =
+      '<li>Open LinkedOut, MailHub, and PingMe &mdash; each shows a different candidate.</li>' +
+      '<li>Open the <strong>Case File</strong> &mdash; the only place to Approve or Deny, with full history.</li>' +
+      '<li>Watch for typos, mismatched names, urgent demands, and suspicious links.</li>' +
+      '<li>Clicking a suspicious link costs integrity, just like a wrong decision.</li>' +
+      '<li>Integrity, Score, Case count, and Threat Level live at the top of the Case File.</li>' +
+      '<li>Drag windows by their title bar, resize them from the bottom-right corner.</li>';
+  }
+}
+
+/* ----------------------- ROUND / APPLICANT SELECTION ----------------------- */
 
 function pickNextFromPool() {
   if (Game.pool.length === 0) return null;
-  // Prefer someone matching current difficulty; otherwise nearest difficulty available.
   let candidates = Game.pool.filter(p => p.difficulty === Game.difficulty);
   if (candidates.length === 0) {
     const sorted = Game.pool.slice().sort((a, b) =>
@@ -186,38 +230,72 @@ function pickNextFromPool() {
   return choice;
 }
 
-function nextApplicant() {
-  const person = pickNextFromPool();
-  if (!person) {
+function shuffle(arr) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function nextRound() {
+  if (Game.over) return;
+  const picked = [];
+  for (let i = 0; i < APPLICANTS_PER_ROUND; i++) {
+    const p = pickNextFromPool();
+    if (!p) break;
+    picked.push(p);
+  }
+  if (picked.length === 0) {
     endGame(true);
     return;
   }
-  Game.current = person;
-  Game.caseNumber++;
-  renderApplicant(person);
-  updateHud();
+  const platforms = APPLICANTS_PER_ROUND === 1 ? [null] : shuffle(PLATFORMS).slice(0, picked.length);
+  Game.round = picked.map((p, i) => ({ person: p, platform: platforms[i], decided: false }));
+  renderRound();
 }
 
 /* ----------------------- RENDERING ----------------------- */
 
-function renderApplicant(p) {
-  // Decision dock
-  document.getElementById('dock-pfp').src = p.pfp;
-  document.getElementById('dock-name').textContent = p.name;
-  document.getElementById('dock-sub').textContent = `Applying for: ${p.job || 'Unknown role'}`;
-  document.getElementById('btn-approve').textContent = p.approveLabel;
-  document.getElementById('btn-deny').textContent = p.denyLabel;
+function findRoundEntry(platform) {
+  return Game.round.find(r => r.platform === platform);
+}
 
-  // LinkedIn
+function renderRound() {
+  if (APPLICANTS_PER_ROUND === 1) {
+    const p = Game.round[0] ? Game.round[0].person : null;
+    renderLinkedinWindow(p);
+    renderEmailWindow(p);
+    renderTextWindow(p);
+  } else {
+    renderLinkedinWindow(findRoundEntry('linkedin') ? findRoundEntry('linkedin').person : null);
+    renderEmailWindow(findRoundEntry('email') ? findRoundEntry('email').person : null);
+    renderTextWindow(findRoundEntry('text') ? findRoundEntry('text').person : null);
+  }
+  renderApplicationRound();
+}
+
+function renderLinkedinWindow(p) {
+  const emptyEl = document.getElementById('li-empty');
+  const contentEl = document.getElementById('li-content');
+  if (!p) {
+    emptyEl.classList.remove('hidden');
+    contentEl.classList.add('hidden');
+    return;
+  }
+  emptyEl.classList.add('hidden');
+  contentEl.classList.remove('hidden');
   document.getElementById('li-pfp').src = p.pfp;
   document.getElementById('li-pfp').style.transform = `scale(${p.pfpScale})`;
   document.getElementById('li-name').textContent = p.name;
-  document.getElementById('li-headline').textContent = p.li.headline || ' ';
-  document.getElementById('li-location').textContent = p.li.location || ' ';
-  document.getElementById('li-mutuals').textContent = p.li.mutuals !== '' ? `${p.li.mutuals} mutual connections` : ' ';
+  document.getElementById('li-headline').textContent = p.li.headline || ' ';
+  document.getElementById('li-location').textContent = p.li.location || ' ';
+  document.getElementById('li-mutuals').textContent = p.li.mutuals !== '' ? `${p.li.mutuals} mutual connections` : ' ';
   document.getElementById('li-gender').textContent = p.gender || '-';
   document.getElementById('li-age').textContent = p.age || '-';
   document.getElementById('li-job').textContent = p.job || '-';
+  document.getElementById('li-bio').textContent = p.li.bio || ' ';
   const expList = document.getElementById('li-experience');
   expList.innerHTML = '';
   p.li.experience.forEach(line => {
@@ -225,62 +303,184 @@ function renderApplicant(p) {
     li.textContent = line;
     expList.appendChild(li);
   });
-  document.getElementById('li-education').textContent = p.li.education || ' ';
-
-  // Email
-  const emailEmpty = document.getElementById('email-empty');
-  const emailContent = document.getElementById('email-content');
-  if (p.email) {
-    emailEmpty.classList.add('hidden');
-    emailContent.classList.remove('hidden');
-    document.getElementById('email-subject').textContent = p.email.subject;
-    document.getElementById('email-sender-name').textContent = p.email.senderName;
-    document.getElementById('email-sender-address').textContent = p.email.senderAddress;
-    document.getElementById('email-body-text').textContent = p.email.body;
-  } else {
-    emailEmpty.classList.remove('hidden');
-    emailContent.classList.add('hidden');
-  }
-
-  // Text / phone
-  document.getElementById('text-pfp').src = p.pfp;
-  const thread = document.getElementById('phone-thread');
-  thread.innerHTML = '';
-  if (p.text) {
-    document.getElementById('text-contact-name').textContent = p.text.sender;
-    const bubble = document.createElement('div');
-    bubble.className = 'bubble-in';
-    bubble.textContent = p.text.body;
-    thread.appendChild(bubble);
-    if (p.text.link) {
-      const linkBubble = document.createElement('div');
-      linkBubble.className = 'bubble-link';
-      linkBubble.textContent = p.text.link;
-      thread.appendChild(linkBubble);
-    }
-  } else {
-    document.getElementById('text-contact-name').textContent = p.name;
-    const empty = document.createElement('div');
-    empty.className = 'text-empty';
-    empty.textContent = 'No new messages from this applicant.';
-    thread.appendChild(empty);
-  }
-
-  // Terminal
-  const term = document.getElementById('terminal-output');
-  term.textContent =
-`AEGIS PERSONNEL RECORDS & BACKGROUND VERIFICATION SYSTEM
-------------------------------------------------------
-> QUERY: "${p.name}"
-> SEARCHING DATABASE...
-
-STATUS: ${p.bg.status || 'UNKNOWN'}
-${p.bg.detail || 'No additional information on file.'}`;
+  document.getElementById('li-education').textContent = p.li.education || ' ';
 }
 
-/* ----------------------- HUD ----------------------- */
+function renderEmailWindow(p) {
+  const emptyEl = document.getElementById('email-empty');
+  const contentEl = document.getElementById('email-content');
+  if (!p || !p.email) {
+    emptyEl.classList.remove('hidden');
+    contentEl.classList.add('hidden');
+    return;
+  }
+  emptyEl.classList.add('hidden');
+  contentEl.classList.remove('hidden');
+  document.getElementById('email-subject').textContent = p.email.subject;
+  document.getElementById('email-sender-name').textContent = p.email.senderName;
+  document.getElementById('email-sender-address').textContent = p.email.senderAddress;
+  document.getElementById('email-applicant-line').textContent = `Applicant age: ${p.age || '-'} | Gender: ${p.gender || '-'}`;
+  document.getElementById('email-body-text').textContent = p.email.body;
+}
 
-function updateHud() {
+function renderTextWindow(p) {
+  const emptyEl = document.getElementById('text-empty');
+  const contentEl = document.getElementById('text-content');
+  if (!p || !p.text) {
+    emptyEl.classList.remove('hidden');
+    contentEl.classList.add('hidden');
+    return;
+  }
+  emptyEl.classList.add('hidden');
+  contentEl.classList.remove('hidden');
+  document.getElementById('text-pfp').src = p.pfp;
+  document.getElementById('text-contact-name').textContent = p.text.sender;
+  document.getElementById('text-applicant-line').textContent = `Age: ${p.age || '-'} | ${p.job || 'Unknown role'}`;
+  const thread = document.getElementById('phone-thread');
+  thread.innerHTML = '';
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble-in';
+  bubble.textContent = p.text.body;
+  thread.appendChild(bubble);
+  if (p.text.link) {
+    const linkBubble = document.createElement('div');
+    linkBubble.className = 'bubble-link';
+    linkBubble.textContent = p.text.link;
+    linkBubble.addEventListener('click', () => handleScamLinkClick(p, linkBubble));
+    thread.appendChild(linkBubble);
+  }
+}
+
+function renderApplicationRound() {
+  const wrap = document.getElementById('app-candidates');
+  wrap.innerHTML = '';
+  if (Game.round.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'app-history-empty';
+    empty.textContent = 'No active candidates.';
+    wrap.appendChild(empty);
+    return;
+  }
+  Game.round.forEach(entry => {
+    const p = entry.person;
+    const card = document.createElement('div');
+    card.className = 'app-candidate-card' + (entry.decided ? ' decided' : '');
+
+    const img = document.createElement('img');
+    img.src = p.pfp;
+    card.appendChild(img);
+
+    const info = document.createElement('div');
+    info.className = 'app-candidate-info';
+    const nameEl = document.createElement('div');
+    nameEl.className = 'app-candidate-name';
+    nameEl.textContent = p.name;
+    const platformEl = document.createElement('div');
+    platformEl.className = 'app-candidate-platform';
+    platformEl.textContent = entry.platform
+      ? `Appeared on: ${PLATFORM_LABELS[entry.platform]} | Applying for: ${p.job || 'Unknown role'}`
+      : `Applying for: ${p.job || 'Unknown role'}`;
+    info.appendChild(nameEl);
+    info.appendChild(platformEl);
+    card.appendChild(info);
+
+    const actions = document.createElement('div');
+    actions.className = 'app-candidate-actions';
+    const denyBtn = document.createElement('button');
+    denyBtn.className = 'app-btn app-btn-deny';
+    denyBtn.textContent = p.denyLabel;
+    denyBtn.disabled = entry.decided;
+    denyBtn.addEventListener('click', () => decideEntry(entry, false));
+    const approveBtn = document.createElement('button');
+    approveBtn.className = 'app-btn app-btn-approve';
+    approveBtn.textContent = p.approveLabel;
+    approveBtn.disabled = entry.decided;
+    approveBtn.addEventListener('click', () => decideEntry(entry, true));
+    actions.appendChild(denyBtn);
+    actions.appendChild(approveBtn);
+    card.appendChild(actions);
+
+    wrap.appendChild(card);
+  });
+}
+
+function renderHistory() {
+  const el = document.getElementById('app-history');
+  el.innerHTML = '';
+  if (Game.history.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'app-history-empty';
+    empty.textContent = 'No decisions yet this shift.';
+    el.appendChild(empty);
+    return;
+  }
+  Game.history.forEach(h => {
+    const row = document.createElement('div');
+    row.className = 'app-history-row';
+    const left = document.createElement('span');
+    left.textContent = `${h.name} — ${h.decisionLabel}`;
+    const right = document.createElement('span');
+    right.className = h.correct ? 'hist-correct' : 'hist-wrong';
+    right.textContent = h.correct ? 'CORRECT' : 'WRONG';
+    row.appendChild(left);
+    row.appendChild(right);
+    el.appendChild(row);
+  });
+}
+
+function loadHighScores() {
+  try {
+    const raw = localStorage.getItem(HIGH_SCORE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch (err) {
+    return [];
+  }
+}
+
+function saveHighScore(entry) {
+  const scores = loadHighScores();
+  scores.push(entry);
+  scores.sort((a, b) => b.score - a.score);
+  const top = scores.slice(0, MAX_HIGH_SCORES);
+  try {
+    localStorage.setItem(HIGH_SCORE_KEY, JSON.stringify(top));
+  } catch (err) { /* localStorage unavailable */ }
+  return top;
+}
+
+function renderHighScores() {
+  const el = document.getElementById('app-highscores');
+  el.innerHTML = '';
+  const scores = loadHighScores();
+  if (scores.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'app-history-empty';
+    empty.textContent = 'No high scores yet.';
+    el.appendChild(empty);
+    return;
+  }
+  scores.forEach((s, i) => {
+    const row = document.createElement('div');
+    row.className = 'app-highscore-row';
+    const rank = document.createElement('span');
+    rank.className = 'app-highscore-rank';
+    rank.textContent = `#${i + 1}`;
+    const score = document.createElement('span');
+    score.className = 'app-highscore-score';
+    score.textContent = `${s.score} pts`;
+    const meta = document.createElement('span');
+    meta.className = 'app-highscore-meta';
+    meta.textContent = `${s.correct}/${s.total} correct · Threat ${s.peakDifficulty} · ${s.date}`;
+    row.appendChild(rank);
+    row.appendChild(score);
+    row.appendChild(meta);
+    el.appendChild(row);
+  });
+}
+
+/* ----------------------- FOOTER STATS ----------------------- */
+
+function updateFooter() {
   const fill = document.getElementById('health-fill');
   fill.style.width = Math.max(0, Game.health) + '%';
   fill.classList.remove('warn', 'danger');
@@ -291,14 +491,18 @@ function updateHud() {
   document.getElementById('case-count').textContent = `${Game.caseNumber} / ${Game.totalCases}`;
   document.getElementById('difficulty-value').textContent = Game.difficulty;
   document.getElementById('score-value').textContent = Game.score;
+  const rating = Game.caseNumber > 0 ? Math.round((Game.correctCount / Game.caseNumber) * 100) : 100;
+  document.getElementById('approval-rating').textContent = rating + '%';
 }
 
 /* ----------------------- DECISIONS ----------------------- */
 
-function makeDecision(approved) {
-  if (Game.over || !Game.current) return;
-  const p = Game.current;
+function decideEntry(entry, approved) {
+  if (Game.over || entry.decided) return;
+  entry.decided = true;
+  const p = entry.person;
   const correct = approved ? !p.isFake : p.isFake;
+  Game.caseNumber++;
 
   if (correct) {
     Game.score += 10 * p.difficulty;
@@ -321,15 +525,41 @@ function makeDecision(approved) {
       : `Mistake! ${p.name} was a real hire, wrongly denied. -${damage}% integrity.`);
   }
   Game.peakDifficulty = Math.max(Game.peakDifficulty, Game.difficulty);
-  updateHud();
+  Game.history.unshift({
+    name: p.name,
+    decisionLabel: approved ? p.approveLabel : p.denyLabel,
+    correct
+  });
+
+  updateFooter();
+  renderApplicationRound();
+  renderHistory();
 
   if (Game.health <= 0) {
     Game.health = 0;
-    updateHud();
+    updateFooter();
     setTimeout(() => endGame(false), 900);
     return;
   }
-  setTimeout(nextApplicant, 900);
+  if (Game.round.every(r => r.decided)) {
+    setTimeout(nextRound, 900);
+  }
+}
+
+function handleScamLinkClick(p, linkEl) {
+  if (Game.over) return;
+  if (Game.linkClicked.has(p.id)) return;
+  Game.linkClicked.add(p.id);
+  linkEl.classList.add('clicked');
+  const damage = 10 + p.difficulty * 3;
+  Game.health -= damage;
+  updateFooter();
+  showToast(false, `You clicked a suspicious link from ${p.name}! -${damage}% integrity.`);
+  if (Game.health <= 0) {
+    Game.health = 0;
+    updateFooter();
+    setTimeout(() => endGame(false), 900);
+  }
 }
 
 function showToast(isCorrect, message) {
@@ -345,6 +575,7 @@ function showToast(isCorrect, message) {
 
 function endGame(completedAll) {
   Game.over = true;
+  if (Game.shakeWatcherId) clearInterval(Game.shakeWatcherId);
   document.getElementById('desktop-screen').classList.add('hidden');
   document.getElementById('end-screen').classList.remove('hidden');
   document.getElementById('end-title').textContent = completedAll ? 'SHIFT COMPLETE' : 'TERMINATED';
@@ -354,11 +585,54 @@ function endGame(completedAll) {
   document.getElementById('end-score').textContent = Game.score;
   document.getElementById('end-correct').textContent = `${Game.correctCount} / ${Game.caseNumber}`;
   document.getElementById('end-difficulty').textContent = Game.peakDifficulty;
+
+  saveHighScore({
+    score: Game.score,
+    correct: Game.correctCount,
+    total: Game.caseNumber,
+    peakDifficulty: Game.peakDifficulty,
+    date: new Date().toLocaleDateString()
+  });
+  renderHighScores();
 }
 
 function restartGame() {
   document.getElementById('end-screen').classList.add('hidden');
-  document.getElementById('briefing-screen').classList.remove('hidden');
+  startGame();
+}
+
+/* ----------------------- SHAKE REMINDER ----------------------- */
+
+function triggerShake(icon) {
+  icon.classList.remove('shake');
+  void icon.offsetWidth;
+  icon.classList.add('shake');
+}
+
+function markAppOpened(name) {
+  if (!REQUIRED_APPS.includes(name)) return;
+  const icon = document.querySelector(`.desktop-icon[data-window="${name}"]`);
+  if (icon) icon.classList.remove('shake');
+}
+
+function isAppOpenVisible(name) {
+  const win = document.getElementById(`window-${name}`);
+  return !!win && !win.classList.contains('hidden') && !win.classList.contains('minimized');
+}
+
+function checkShakes() {
+  if (Game.over) return;
+  REQUIRED_APPS.forEach(name => {
+    if (isAppOpenVisible(name)) return;
+    const icon = document.querySelector(`.desktop-icon[data-window="${name}"]`);
+    if (icon) triggerShake(icon);
+  });
+}
+
+function startShakeWatcher() {
+  if (Game.shakeWatcherId) clearInterval(Game.shakeWatcherId);
+  checkShakes();
+  Game.shakeWatcherId = setInterval(checkShakes, 2000);
 }
 
 /* ----------------------- WINDOW MANAGEMENT ----------------------- */
@@ -376,6 +650,7 @@ function openWindow(name) {
   win.classList.remove('minimized');
   win.classList.remove('hidden');
   Game.openWindows.add(name);
+  markAppOpened(name);
   bringToFront(win);
 }
 
@@ -403,6 +678,7 @@ function syncTaskbar() {
     btn.addEventListener('click', () => {
       if (win.classList.contains('minimized')) {
         win.classList.remove('minimized');
+        markAppOpened(name);
         bringToFront(win);
       } else if (Game.focusedWindow === name) {
         minimizeWindow(name);
@@ -459,6 +735,26 @@ function setupWindows() {
   });
 }
 
+function centerWindow(win) {
+  const desktop = document.getElementById('desktop-screen').getBoundingClientRect();
+  const w = win.offsetWidth, h = win.offsetHeight;
+  win.style.left = Math.max(0, (desktop.width - w) / 2) + 'px';
+  win.style.top = Math.max(0, (desktop.height - h) / 2) + 'px';
+}
+
+function setupAppNav() {
+  const navBtns = document.querySelectorAll('.app-nav-btn');
+  navBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      navBtns.forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.app-page').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById(`app-page-${btn.dataset.page}`).classList.add('active');
+      if (btn.dataset.page === 'highscores') renderHighScores();
+    });
+  });
+}
+
 /* ----------------------- CLOCK ----------------------- */
 
 function startClock() {
@@ -469,6 +765,10 @@ function startClock() {
     const ampm = h >= 12 ? 'PM' : 'AM';
     h = h % 12 || 12;
     document.getElementById('taskbar-clock').textContent = `${h}:${m} ${ampm}`;
+    const mm = (now.getMonth() + 1).toString().padStart(2, '0');
+    const dd = now.getDate().toString().padStart(2, '0');
+    const yyyy = now.getFullYear();
+    document.getElementById('taskbar-date').textContent = `${mm}/${dd}/${yyyy}`;
   }
   tick();
   setInterval(tick, 1000 * 30);
@@ -476,17 +776,26 @@ function startClock() {
 
 /* ----------------------- BOOTSTRAP ----------------------- */
 
+function setupFullscreenPrompt() {
+  const prompt = document.getElementById('fullscreen-prompt');
+  const dismiss = () => prompt.classList.add('hidden');
+  document.getElementById('fullscreen-enter-btn').addEventListener('click', () => {
+    const el = document.documentElement;
+    const request = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen;
+    if (request) {
+      request.call(el).catch(() => {});
+    }
+    dismiss();
+  });
+  document.getElementById('fullscreen-skip-btn').addEventListener('click', dismiss);
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
+  setupFullscreenPrompt();
   setupLogin();
   setupWindows();
-
-  document.getElementById('briefing-start-btn').addEventListener('click', startGame);
+  setupAppNav();
   document.getElementById('restart-btn').addEventListener('click', restartGame);
-  document.getElementById('btn-approve').addEventListener('click', () => makeDecision(true));
-  document.getElementById('btn-deny').addEventListener('click', () => makeDecision(false));
-  document.getElementById('taskbar-start').addEventListener('click', () => {
-    ['linkedin', 'email', 'text', 'terminal'].forEach(openWindow);
-  });
 
   try {
     Game.people = await loadPeople();

@@ -8,6 +8,21 @@
 </head>
 <body>
 
+<!-- ============ FULLSCREEN RECOMMENDATION ============ -->
+<section id="fullscreen-prompt" class="screen">
+  <div class="fullscreen-box">
+    <div class="login-logo">
+      <span class="logo-mark">&#9670;</span> AEGIS DYNAMICS
+      <small>SECURE ACCESS TERMINAL v2.7</small>
+    </div>
+    <p class="fullscreen-message">For the best experience, this terminal is recommended to be run in full screen.</p>
+    <div class="fullscreen-actions">
+      <button id="fullscreen-enter-btn">ENTER FULL SCREEN</button>
+      <button id="fullscreen-skip-btn">CONTINUE IN WINDOW</button>
+    </div>
+  </div>
+</section>
+
 <!-- ============ BOOT / LOGIN SCREEN ============ -->
 <section id="login-screen" class="screen">
   <div class="crt-overlay"></div>
@@ -31,46 +46,8 @@
   </div>
 </section>
 
-<!-- ============ BRIEFING SCREEN ============ -->
-<section id="briefing-screen" class="screen hidden">
-  <div class="briefing-box">
-    <h1>MEMO: IT SECURITY OFFICER</h1>
-    <p>Welcome to Aegis Dynamics. Your job is simple: review every job applicant and every internal
-    message that crosses your desk, then <strong>APPROVE</strong> or <strong>DENY</strong> them.</p>
-    <ul>
-      <li>Open the <strong>LinkedIn</strong>, <strong>Mail</strong>, and <strong>Messages</strong> windows to inspect each applicant.</li>
-      <li>Use the <strong>Verification Terminal</strong> to cross-check claims against personnel records.</li>
-      <li>Letting a fake through &mdash; or rejecting a real hire &mdash; damages company integrity.</li>
-      <li>The better you do, the trickier the applicants get.</li>
-    </ul>
-    <button id="briefing-start-btn">START SHIFT</button>
-  </div>
-</section>
-
 <!-- ============ DESKTOP / MAIN GAME ============ -->
 <section id="desktop-screen" class="screen hidden">
-
-  <!-- HUD -->
-  <header id="hud">
-    <div class="hud-group hud-brand">AEGIS<span>DYNAMICS</span></div>
-    <div class="hud-group hud-health">
-      <span class="hud-label">COMPANY INTEGRITY</span>
-      <div class="health-bar"><div class="health-bar-fill" id="health-fill"></div></div>
-      <span class="hud-value" id="health-value">100%</span>
-    </div>
-    <div class="hud-group">
-      <span class="hud-label">CASE</span>
-      <span class="hud-value" id="case-count">0 / 0</span>
-    </div>
-    <div class="hud-group">
-      <span class="hud-label">THREAT LEVEL</span>
-      <span class="hud-value" id="difficulty-value">1</span>
-    </div>
-    <div class="hud-group">
-      <span class="hud-label">SCORE</span>
-      <span class="hud-value" id="score-value">0</span>
-    </div>
-  </header>
 
   <!-- Desktop icons -->
   <div id="desktop-icons">
@@ -86,45 +63,81 @@
       <span class="icon-glyph icon-text">&#9998;</span>
       <span class="icon-label">PingMe</span>
     </button>
-    <button class="desktop-icon" data-window="terminal">
-      <span class="icon-glyph icon-terminal">&gt;_</span>
-      <span class="icon-label">Verify-Term</span>
+    <button class="desktop-icon" data-window="application">
+      <span class="icon-glyph icon-application">&#10003;</span>
+      <span class="icon-label">Case File</span>
     </button>
+    <button class="desktop-icon" data-window="tips">
+      <span class="icon-glyph icon-tips">!</span>
+      <span class="icon-label">Tips</span>
+    </button>
+  </div>
+
+  <!-- ===== WINDOW: Tips ===== -->
+  <div class="window window-tips" id="window-tips" data-window="tips">
+    <div class="window-titlebar" data-drag-handle>
+      <span class="window-title">! Tips &amp; Onboarding</span>
+      <div class="window-controls">
+        <button class="win-btn win-min" data-action="minimize">&minus;</button>
+        <button class="win-btn win-close" data-action="close">&times;</button>
+      </div>
+    </div>
+    <div class="window-body tips-body">
+      <h2>Welcome, Security Officer.</h2>
+      <p>Each shift, one candidate applies at a time &mdash; and they show up identically on
+      <strong>LinkedOut</strong>, <strong>MailHub</strong>, and <strong>PingMe</strong>. Cross-reference all three before you decide.</p>
+      <ul>
+        <li>Open LinkedOut, MailHub, and PingMe &mdash; all three show the same candidate.</li>
+        <li>Open the <strong>Case File</strong> &mdash; the only place to Approve or Deny, with full history.</li>
+        <li>Watch for typos, mismatched names, urgent demands, and suspicious links.</li>
+        <li>Clicking a suspicious link costs integrity, just like a wrong decision.</li>
+        <li>Integrity, Score, Case count, and Threat Level live at the top of the Case File.</li>
+        <li>Drag windows by their title bar, resize them from the bottom-right corner.</li>
+      </ul>
+      <p class="tips-reminder">Reopen this window anytime from the <strong>Tips</strong> icon if you forget how something works.</p>
+    </div>
   </div>
 
   <!-- ===== WINDOW: LinkedOut (LinkedIn-style) ===== -->
   <div class="window window-linkedin" id="window-linkedin" data-window="linkedin">
     <div class="window-titlebar" data-drag-handle>
-      <span class="window-title">&#128188; LinkedOut &mdash; Professional Profile</span>
+      <span class="window-title">in&nbsp;&nbsp;LinkedOut &mdash; Professional Profile</span>
       <div class="window-controls">
-        <button class="win-btn win-min" data-action="minimize">_</button>
+        <button class="win-btn win-min" data-action="minimize">&minus;</button>
         <button class="win-btn win-close" data-action="close">&times;</button>
       </div>
     </div>
     <div class="window-body li-body">
-      <div class="li-cover"></div>
-      <div class="li-header">
-        <img class="li-pfp" id="li-pfp" src="" alt="profile photo">
-        <div class="li-header-text">
-          <h2 id="li-name">&nbsp;</h2>
-          <p id="li-headline" class="li-headline">&nbsp;</p>
-          <p id="li-location" class="li-location">&nbsp;</p>
-          <p id="li-mutuals" class="li-mutuals">&nbsp;</p>
+      <div class="li-empty" id="li-empty">No candidate is using LinkedOut this round.</div>
+      <div class="li-content hidden" id="li-content">
+        <div class="li-cover"></div>
+        <div class="li-header">
+          <img class="li-pfp" id="li-pfp" src="" alt="profile photo">
+          <div class="li-header-text">
+            <h2 id="li-name">&nbsp;</h2>
+            <p id="li-headline" class="li-headline">&nbsp;</p>
+            <p id="li-location" class="li-location">&nbsp;</p>
+            <p id="li-mutuals" class="li-mutuals">&nbsp;</p>
+          </div>
+          <button class="li-connect-btn fx-btn">+ Connect</button>
         </div>
-        <button class="li-connect-btn" disabled>+ Connect</button>
-      </div>
-      <div class="li-meta-row">
-        <div class="li-meta-chip">Gender: <b id="li-gender">-</b></div>
-        <div class="li-meta-chip">Age: <b id="li-age">-</b></div>
-        <div class="li-meta-chip">Applying for: <b id="li-job">-</b></div>
-      </div>
-      <div class="li-section">
-        <h3>Experience</h3>
-        <ul id="li-experience"></ul>
-      </div>
-      <div class="li-section">
-        <h3>Education</h3>
-        <p id="li-education">&nbsp;</p>
+        <div class="li-meta-row">
+          <div class="li-meta-chip">Gender: <b id="li-gender">-</b></div>
+          <div class="li-meta-chip">Age: <b id="li-age">-</b></div>
+          <div class="li-meta-chip">Applying for: <b id="li-job">-</b></div>
+        </div>
+        <div class="li-section">
+          <h3>About</h3>
+          <p id="li-bio">&nbsp;</p>
+        </div>
+        <div class="li-section">
+          <h3>Experience</h3>
+          <ul id="li-experience"></ul>
+        </div>
+        <div class="li-section">
+          <h3>Education</h3>
+          <p id="li-education">&nbsp;</p>
+        </div>
       </div>
     </div>
   </div>
@@ -134,26 +147,27 @@
     <div class="window-titlebar" data-drag-handle>
       <span class="window-title">&#9993; MailHub Inbox</span>
       <div class="window-controls">
-        <button class="win-btn win-min" data-action="minimize">_</button>
+        <button class="win-btn win-min" data-action="minimize">&minus;</button>
         <button class="win-btn win-close" data-action="close">&times;</button>
       </div>
     </div>
     <div class="window-body email-body">
       <div class="email-sidebar">
-        <button class="email-compose">+ Compose</button>
-        <div class="email-folder active">Inbox</div>
-        <div class="email-folder">Sent</div>
-        <div class="email-folder">Spam</div>
-        <div class="email-folder">Trash</div>
+        <button class="email-compose fx-btn">+ Compose</button>
+        <div class="email-folder active fx-btn">Inbox</div>
+        <div class="email-folder fx-btn">Sent</div>
+        <div class="email-folder fx-btn">Spam</div>
+        <div class="email-folder fx-btn">Trash</div>
       </div>
       <div class="email-reading-pane" id="email-reading-pane">
-        <div class="email-empty" id="email-empty">No message selected for this applicant.</div>
+        <div class="email-empty" id="email-empty">No message from this round's candidates.</div>
         <div class="email-content hidden" id="email-content">
           <h2 id="email-subject">&nbsp;</h2>
           <div class="email-meta">
             <span id="email-sender-name">&nbsp;</span>
             <span class="email-addr">&lt;<span id="email-sender-address"></span>&gt;</span>
           </div>
+          <div class="email-applicant-line" id="email-applicant-line">&nbsp;</div>
           <hr>
           <pre id="email-body-text"></pre>
         </div>
@@ -166,60 +180,90 @@
     <div class="window-titlebar" data-drag-handle>
       <span class="window-title">&#9998; PingMe</span>
       <div class="window-controls">
-        <button class="win-btn win-min" data-action="minimize">_</button>
+        <button class="win-btn win-min" data-action="minimize">&minus;</button>
         <button class="win-btn win-close" data-action="close">&times;</button>
       </div>
     </div>
     <div class="window-body text-body">
-      <div class="phone-header">
-        <img class="phone-contact-pfp" id="text-pfp" src="" alt="">
-        <span id="text-contact-name">&nbsp;</span>
-      </div>
-      <div class="phone-thread" id="phone-thread">
-        <div class="text-empty" id="text-empty">No new messages from this applicant.</div>
-      </div>
-      <div class="phone-input-bar">
-        <input type="text" disabled placeholder="iMessage">
-        <button disabled>&#8593;</button>
+      <div class="text-empty" id="text-empty">No texts from this round's candidates.</div>
+      <div class="text-content hidden" id="text-content">
+        <div class="phone-header">
+          <img class="phone-contact-pfp" id="text-pfp" src="" alt="">
+          <div class="phone-header-text">
+            <span id="text-contact-name">&nbsp;</span>
+            <span id="text-applicant-line" class="phone-applicant-line">&nbsp;</span>
+          </div>
+        </div>
+        <div class="phone-thread" id="phone-thread"></div>
+        <div class="phone-input-bar">
+          <input type="text" disabled placeholder="iMessage" class="fx-btn">
+          <button disabled class="fx-btn">&#8593;</button>
+        </div>
       </div>
     </div>
   </div>
 
-  <!-- ===== WINDOW: Verification Terminal ===== -->
-  <div class="window window-terminal" id="window-terminal" data-window="terminal">
+  <!-- ===== WINDOW: Case File ===== -->
+  <div class="window window-application" id="window-application" data-window="application">
     <div class="window-titlebar" data-drag-handle>
-      <span class="window-title">&gt;_ Verification Terminal</span>
+      <span class="window-title">&#10003; Case File</span>
       <div class="window-controls">
-        <button class="win-btn win-min" data-action="minimize">_</button>
+        <button class="win-btn win-min" data-action="minimize">&minus;</button>
         <button class="win-btn win-close" data-action="close">&times;</button>
       </div>
     </div>
-    <div class="window-body terminal-body">
-      <pre id="terminal-output">AEGIS PERSONNEL RECORDS &amp; BACKGROUND VERIFICATION SYSTEM
-------------------------------------------------------
-Awaiting query...</pre>
+    <div class="window-body application-body">
+      <header class="app-stats-bar">
+        <div class="app-stat">
+          <span class="app-stat-label">COMPANY INTEGRITY</span>
+          <div class="health-bar"><div class="health-bar-fill" id="health-fill"></div></div>
+          <span class="app-stat-value" id="health-value">100%</span>
+        </div>
+        <div class="app-stat">
+          <span class="app-stat-label">CASE</span>
+          <span class="app-stat-value" id="case-count">0 / 0</span>
+        </div>
+        <div class="app-stat">
+          <span class="app-stat-label">THREAT LEVEL</span>
+          <span class="app-stat-value" id="difficulty-value">1</span>
+        </div>
+        <div class="app-stat">
+          <span class="app-stat-label">APPROVAL RATING</span>
+          <span class="app-stat-value" id="approval-rating">100%</span>
+        </div>
+        <div class="app-stat">
+          <span class="app-stat-label">SCORE</span>
+          <span class="app-stat-value" id="score-value">0</span>
+        </div>
+      </header>
+      <div class="app-main">
+        <nav class="app-sidebar">
+          <button class="app-nav-btn active" data-page="round">This Round</button>
+          <button class="app-nav-btn" data-page="history">History</button>
+          <button class="app-nav-btn" data-page="highscores">High Scores</button>
+        </nav>
+        <div class="app-pages">
+          <section class="app-page active" id="app-page-round">
+            <h3>This Round</h3>
+            <div id="app-candidates" class="app-candidates"></div>
+          </section>
+          <section class="app-page" id="app-page-history">
+            <h3>History</h3>
+            <div id="app-history" class="app-history"></div>
+          </section>
+          <section class="app-page" id="app-page-highscores">
+            <h3>High Scores</h3>
+            <div id="app-highscores" class="app-highscores"></div>
+          </section>
+        </div>
+      </div>
     </div>
   </div>
 
-  <!-- Decision dock -->
-  <footer id="decision-dock">
-    <div class="dock-applicant">
-      <img id="dock-pfp" src="" alt="">
-      <div class="dock-name-block">
-        <span id="dock-name">&nbsp;</span>
-        <span id="dock-sub">Reviewing application&hellip;</span>
-      </div>
-    </div>
-    <div class="dock-actions">
-      <button id="btn-deny" class="dock-btn dock-deny">DENY</button>
-      <button id="btn-approve" class="dock-btn dock-approve">APPROVE</button>
-    </div>
-  </footer>
-
   <!-- Taskbar -->
   <nav id="taskbar">
-    <button id="taskbar-start">&#9670; START</button>
     <div id="taskbar-windows"></div>
+    <div id="taskbar-date">06/17/2026</div>
     <div id="taskbar-clock">9:41 AM</div>
   </nav>
 

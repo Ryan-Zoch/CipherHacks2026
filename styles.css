@@ -14,6 +14,39 @@ button { font-family: inherit; cursor: pointer; }
   width: 100vw; height: 100vh;
 }
 
+/* ===================== FULLSCREEN PROMPT ===================== */
+#fullscreen-prompt {
+  background: radial-gradient(circle at 50% 30%, #0b2a1f 0%, #04140e 60%, #000 100%);
+  display: flex; align-items: center; justify-content: center;
+  font-family: "Consolas", "Courier New", monospace;
+  color: #5dffb0;
+  z-index: 100;
+}
+.fullscreen-box {
+  width: 460px;
+  border: 1px solid #2f8f63;
+  background: rgba(0, 20, 12, 0.85);
+  box-shadow: 0 0 30px rgba(60, 255, 170, 0.25), inset 0 0 40px rgba(0,255,150,0.05);
+  padding: 28px 32px;
+  text-align: center;
+}
+.fullscreen-message {
+  margin: 18px 0 22px;
+  font-size: 12px; line-height: 1.6; color: #c9ffe4;
+}
+.fullscreen-actions { display: flex; flex-direction: column; gap: 10px; }
+.fullscreen-actions button {
+  font-family: inherit; font-size: 12px; letter-spacing: 1px; padding: 10px;
+}
+#fullscreen-enter-btn {
+  background: #134a32; border: 1px solid #5dffb0; color: #c9ffe4; font-weight: bold;
+}
+#fullscreen-enter-btn:hover { background: #1d6b48; }
+#fullscreen-skip-btn {
+  background: transparent; border: 1px solid #2f8f63; color: #2f8f63;
+}
+#fullscreen-skip-btn:hover { color: #5dffb0; border-color: #5dffb0; }
+
 /* ===================== LOGIN SCREEN ===================== */
 #login-screen {
   background: radial-gradient(circle at 50% 30%, #0b2a1f 0%, #04140e 60%, #000 100%);
@@ -65,53 +98,22 @@ button { font-family: inherit; cursor: pointer; }
   margin-top: 18px; font-size: 9px; letter-spacing: 1px; color: #1d5e3f; text-align: center;
 }
 
-/* ===================== BRIEFING SCREEN ===================== */
-#briefing-screen {
-  background: #c8c2a8;
-  display: flex; align-items: center; justify-content: center;
-}
-.briefing-box {
-  width: 560px; background: #f4f1e4; border: 4px double #4a4536;
-  padding: 32px 36px; font-family: "Courier New", monospace; color: #2a2718;
-  box-shadow: 0 10px 40px rgba(0,0,0,0.4);
-}
-.briefing-box h1 { font-size: 20px; letter-spacing: 1px; margin-bottom: 14px; border-bottom: 2px solid #4a4536; padding-bottom: 8px; }
-.briefing-box p { font-size: 13px; line-height: 1.6; margin-bottom: 12px; }
-.briefing-box ul { margin: 0 0 18px 18px; font-size: 12.5px; line-height: 1.7; }
-#briefing-start-btn {
-  background: #2a2718; color: #f4f1e4; border: none; padding: 12px 22px;
-  letter-spacing: 2px; font-weight: bold; font-size: 13px;
-}
-#briefing-start-btn:hover { background: #4a4536; }
-
 /* ===================== DESKTOP ===================== */
 #desktop-screen {
   background: linear-gradient(135deg, #1a6e8c 0%, #134f66 50%, #0d3a4d 100%);
   position: relative;
 }
 
-/* HUD */
-#hud {
-  height: 42px; display: flex; align-items: center; gap: 26px;
-  background: linear-gradient(to bottom, #2b2b2b, #161616);
-  border-bottom: 2px solid #444;
-  padding: 0 18px; color: #eee; font-size: 12px;
-  position: relative; z-index: 50;
+/* ===================== SHAKE REMINDER ===================== */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  15% { transform: translateX(-6px) rotate(-3deg); }
+  30% { transform: translateX(6px) rotate(3deg); }
+  45% { transform: translateX(-6px) rotate(-2deg); }
+  60% { transform: translateX(6px) rotate(2deg); }
+  75% { transform: translateX(-3px); }
 }
-.hud-brand { font-weight: bold; letter-spacing: 1px; color: #fff; }
-.hud-brand span { color: #5dc7ff; }
-.hud-group { display: flex; align-items: center; gap: 8px; }
-.hud-label { color: #999; font-size: 10px; letter-spacing: 1px; }
-.hud-value { font-weight: bold; color: #fff; }
-.health-bar {
-  width: 130px; height: 10px; background: #3a3a3a; border: 1px solid #555;
-}
-.health-bar-fill {
-  height: 100%; width: 100%; background: linear-gradient(to right, #3ddc6a, #7ee787);
-  transition: width 0.4s ease, background 0.4s ease;
-}
-.health-bar-fill.warn { background: linear-gradient(to right, #e0a82e, #f4cf5b); }
-.health-bar-fill.danger { background: linear-gradient(to right, #d8413a, #ff6b62); }
+.shake { animation: shake 0.5s ease; }
 
 /* Desktop icons */
 #desktop-icons {
@@ -132,17 +134,21 @@ button { font-family: inherit; cursor: pointer; }
 .icon-linkedin { background: #0a66c2; }
 .icon-email { background: #c5221f; font-size: 20px; }
 .icon-text { background: #2dbe5c; font-size: 18px; }
-.icon-terminal { background: #111; border: 1px solid #5dffb0; color: #5dffb0; font-size: 13px; }
+.icon-application { background: #7b2ff7; font-size: 20px; }
+.icon-tips { background: #f5a623; font-size: 20px; font-weight: 900; }
 
 /* ===================== GENERIC WINDOW ===================== */
 .window {
   position: absolute;
   width: 480px; height: 420px;
+  min-width: 280px; min-height: 220px;
   background: #ece9d8;
   border: 1px solid #2a5b8a;
   box-shadow: 0 8px 28px rgba(0,0,0,0.45);
   display: flex; flex-direction: column;
   z-index: 10;
+  resize: both;
+  overflow: hidden;
 }
 .window.focused { z-index: 30; box-shadow: 0 12px 36px rgba(0,0,0,0.6); }
 .window.minimized { display: none; }
@@ -166,9 +172,15 @@ button { font-family: inherit; cursor: pointer; }
   flex: 1; overflow-y: auto; background: #fff; font-size: 13px; color: #222;
 }
 
+/* Decorative buttons that don't trigger real actions still get a hover/active feel */
+.fx-btn { transition: filter 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease; }
+.fx-btn:hover { filter: brightness(1.08); box-shadow: 0 2px 8px rgba(0,0,0,0.18); }
+.fx-btn:active { transform: scale(0.97); filter: brightness(0.95); }
+
 /* ===================== LINKEDIN WINDOW ===================== */
-.window-linkedin { width: 600px; height: 560px; top: 60px; left: 360px; }
+.window-linkedin { width: 480px; height: 480px; top: 30px; left: 140px; }
 .li-body { padding: 0; }
+.li-empty { color: #888; font-style: italic; font-size: 13px; text-align: center; margin-top: 40px; }
 .li-cover { height: 60px; background: linear-gradient(120deg, #0a66c2, #5fb1ff); }
 .li-header {
   display: flex; align-items: flex-end; gap: 14px; padding: 0 18px 12px;
@@ -185,8 +197,8 @@ button { font-family: inherit; cursor: pointer; }
 .li-connect-btn {
   align-self: center; border: 1px solid #0a66c2; color: #0a66c2; background: #fff;
   border-radius: 16px; padding: 6px 16px; font-weight: bold; font-size: 12px; margin-bottom: 8px;
-  opacity: 0.6;
 }
+#li-bio { font-size: 12.5px; color: #333; line-height: 1.6; padding-left: 12px; border-left: 2px solid #0a66c2; }
 .li-meta-row { display: flex; gap: 10px; padding: 0 18px 14px; flex-wrap: wrap; }
 .li-meta-chip {
   background: #eef3f8; border: 1px solid #d7e3ee; border-radius: 4px; padding: 4px 10px; font-size: 11.5px;
@@ -198,7 +210,7 @@ button { font-family: inherit; cursor: pointer; }
 #li-education { font-size: 12.5px; color: #333; padding-left: 12px; border-left: 2px solid #0a66c2; min-height: 14px; }
 
 /* ===================== EMAIL WINDOW ===================== */
-.window-email { width: 520px; height: 440px; top: 90px; left: 60px; }
+.window-email { width: 560px; height: 340px; top: 30px; left: 660px; }
 .email-body { display: flex; padding: 0; }
 .email-sidebar {
   width: 110px; background: #f6f6f6; border-right: 1px solid #e2e2e2;
@@ -215,22 +227,30 @@ button { font-family: inherit; cursor: pointer; }
 .email-content h2 { font-size: 15px; color: #202124; margin-bottom: 6px; }
 .email-meta { font-size: 12px; color: #444; display: flex; gap: 6px; flex-wrap: wrap; }
 .email-meta .email-addr { color: #888; }
+.email-applicant-line { font-size: 11.5px; color: #777; margin-top: 4px; }
 .email-content hr { border: none; border-top: 1px solid #eee; margin: 10px 0; }
 #email-body-text {
   font-family: inherit; white-space: pre-wrap; font-size: 12.5px; line-height: 1.6; color: #222;
 }
+.scam-link {
+  color: #1a0dab; text-decoration: underline; cursor: pointer; word-break: break-all;
+}
+.scam-link:hover { color: #d8413a; }
 
 /* ===================== TEXT / PHONE WINDOW ===================== */
-.window-text { width: 320px; height: 540px; top: 70px; left: 940px; }
+.window-text { width: 300px; height: 460px; top: 30px; left: 1040px; }
 .text-body { display: flex; flex-direction: column; padding: 0; background: #e7ebf0; }
 .phone-header {
   background: #f7f7f7; border-bottom: 1px solid #ddd; padding: 10px;
   display: flex; flex-direction: column; align-items: center; gap: 4px;
 }
 .phone-contact-pfp { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; background: #ccc; }
+.phone-header-text { display: flex; flex-direction: column; align-items: center; gap: 2px; }
 #text-contact-name { font-size: 12.5px; font-weight: bold; color: #222; }
+.phone-applicant-line { font-size: 10.5px; color: #888; }
 .phone-thread { flex: 1; padding: 12px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
 .text-empty { color: #888; font-style: italic; font-size: 12px; text-align: center; margin-top: 30px; }
+.text-content { display: flex; flex-direction: column; height: 100%; }
 .bubble-in {
   align-self: flex-start; background: #fff; border: 1px solid #ddd; border-radius: 14px;
   padding: 8px 12px; max-width: 80%; font-size: 12.5px; line-height: 1.4; color: #222;
@@ -238,7 +258,10 @@ button { font-family: inherit; cursor: pointer; }
 .bubble-link {
   align-self: flex-start; background: #fff3cd; border: 1px solid #e8d090; border-radius: 10px;
   padding: 6px 10px; max-width: 80%; font-size: 11.5px; color: #7a5c00; word-break: break-all;
+  cursor: pointer; text-decoration: underline;
 }
+.bubble-link:hover { background: #ffe9a8; color: #5c4400; }
+.bubble-link.clicked { opacity: 0.5; cursor: default; text-decoration: line-through; }
 .phone-input-bar {
   display: flex; gap: 6px; padding: 8px; background: #f7f7f7; border-top: 1px solid #ddd;
 }
@@ -249,35 +272,84 @@ button { font-family: inherit; cursor: pointer; }
   width: 28px; height: 28px; border-radius: 50%; border: none; background: #2dbe5c; color: #fff;
 }
 
-/* ===================== TERMINAL WINDOW ===================== */
-.window-terminal { width: 480px; height: 300px; top: 470px; left: 60px; }
-.terminal-body { background: #060c08; padding: 14px; }
-#terminal-output {
-  font-family: "Consolas", "Courier New", monospace; color: #5dffb0; font-size: 12px;
-  line-height: 1.6; white-space: pre-wrap;
-}
+/* ===================== TIPS WINDOW ===================== */
+.window-tips { width: 760px; height: 320px; top: 100px; left: 100px; }
+.tips-body { padding: 20px 28px; }
+.tips-body h2 { font-size: 16px; color: #1a1a1a; margin-bottom: 10px; }
+.tips-body p { font-size: 12.5px; line-height: 1.6; margin-bottom: 12px; color: #333; }
+.tips-body ul { margin: 0 0 14px 18px; font-size: 12.5px; line-height: 1.8; color: #222; }
+.tips-body li { white-space: nowrap; }
+.tips-reminder { font-style: italic; color: #555; }
 
-/* ===================== DECISION DOCK ===================== */
-#decision-dock {
-  position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%);
-  width: 440px; background: rgba(20,20,20,0.92); border: 1px solid #444; border-radius: 8px;
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 10px 16px; gap: 14px; z-index: 40; box-shadow: 0 6px 20px rgba(0,0,0,0.5);
+/* ===================== CASE FILE ===================== */
+.window-application { width: 600px; height: 460px; top: 40px; left: 260px; }
+.application-body { display: flex; flex-direction: column; padding: 0; }
+.app-main { flex: 1; display: flex; overflow: hidden; }
+.app-sidebar {
+  width: 130px; flex: 0 0 130px; background: #f6f6f6; border-right: 1px solid #e2e2e2;
+  display: flex; flex-direction: column; padding: 10px 8px; gap: 6px;
 }
-.dock-applicant { display: flex; align-items: center; gap: 10px; }
-.dock-applicant img { width: 38px; height: 38px; border-radius: 50%; object-fit: cover; background: #555; }
-.dock-name-block { display: flex; flex-direction: column; color: #fff; }
-#dock-name { font-weight: bold; font-size: 13px; }
-#dock-sub { font-size: 10.5px; color: #aaa; }
-.dock-actions { display: flex; gap: 10px; }
-.dock-btn {
-  border: none; padding: 10px 20px; font-weight: bold; letter-spacing: 1px; font-size: 12.5px;
+.app-nav-btn {
+  border: none; background: transparent; text-align: left; padding: 8px 10px; font-size: 12px;
+  border-radius: 4px; color: #444;
+}
+.app-nav-btn:hover { background: #eee; }
+.app-nav-btn.active { background: #1c5fae; color: #fff; font-weight: bold; }
+.app-pages { flex: 1; overflow-y: auto; position: relative; }
+.app-page { display: none; padding: 14px 18px; }
+.app-page.active { display: block; }
+.app-page h3 { font-size: 13px; color: #1a1a1a; margin-bottom: 10px; }
+.app-candidates { display: flex; flex-direction: column; gap: 10px; }
+.app-candidate-card {
+  display: flex; align-items: center; gap: 10px; border: 1px solid #ddd; border-radius: 6px;
+  padding: 8px 10px; background: #fafafa;
+}
+.app-candidate-card img { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; background: #ccc; }
+.app-candidate-info { flex: 1; }
+.app-candidate-name { font-weight: bold; font-size: 12.5px; color: #1a1a1a; }
+.app-candidate-platform { font-size: 10.5px; color: #888; }
+.app-candidate-actions { display: flex; gap: 6px; }
+.app-btn {
+  border: none; padding: 7px 14px; font-weight: bold; letter-spacing: 0.5px; font-size: 11.5px;
   border-radius: 4px; color: #fff;
 }
-.dock-deny { background: #b3332c; }
-.dock-deny:hover { background: #d8413a; }
-.dock-approve { background: #2a8a4e; }
-.dock-approve:hover { background: #34a85f; }
+.app-btn-deny { background: #b3332c; }
+.app-btn-deny:hover { background: #d8413a; }
+.app-btn-approve { background: #2a8a4e; }
+.app-btn-approve:hover { background: #34a85f; }
+.app-candidate-card.decided { opacity: 0.55; }
+.app-history-row {
+  display: flex; justify-content: space-between; gap: 8px; font-size: 11.5px;
+  padding: 5px 0; border-bottom: 1px solid #eee; color: #333;
+}
+.app-history-row .hist-correct { color: #2a8a4e; font-weight: bold; }
+.app-history-row .hist-wrong { color: #b3332c; font-weight: bold; }
+.app-history-empty { color: #888; font-style: italic; font-size: 12px; text-align: center; margin-top: 10px; }
+.app-highscores { display: flex; flex-direction: column; gap: 6px; }
+.app-highscore-row {
+  display: flex; align-items: center; gap: 10px; font-size: 11.5px; color: #333;
+  padding: 6px 10px; border: 1px solid #eee; border-radius: 4px; background: #fafafa;
+}
+.app-highscore-rank { font-weight: bold; color: #1c5fae; width: 22px; }
+.app-highscore-score { font-weight: bold; color: #1a1a1a; flex: 1; }
+.app-highscore-meta { color: #888; }
+.app-stats-bar {
+  display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
+  background: linear-gradient(to bottom, #2b2b2b, #161616); border-bottom: 2px solid #444;
+  padding: 10px 16px; color: #eee; font-size: 11px; flex: 0 0 auto;
+}
+.app-stat { display: flex; align-items: center; gap: 6px; }
+.app-stat-label { color: #999; font-size: 9.5px; letter-spacing: 1px; }
+.app-stat-value { font-weight: bold; color: #fff; }
+.health-bar {
+  width: 110px; height: 10px; background: #3a3a3a; border: 1px solid #555;
+}
+.health-bar-fill {
+  height: 100%; width: 100%; background: linear-gradient(to right, #3ddc6a, #7ee787);
+  transition: width 0.4s ease, background 0.4s ease;
+}
+.health-bar-fill.warn { background: linear-gradient(to right, #e0a82e, #f4cf5b); }
+.health-bar-fill.danger { background: linear-gradient(to right, #d8413a, #ff6b62); }
 
 /* ===================== TASKBAR ===================== */
 #taskbar {
@@ -286,16 +358,13 @@ button { font-family: inherit; cursor: pointer; }
   border-top: 2px solid #444; display: flex; align-items: center; gap: 10px; padding: 0 10px;
   z-index: 45;
 }
-#taskbar-start {
-  background: linear-gradient(to bottom, #3ddc6a, #1f8e44); color: #fff; border: none;
-  font-weight: bold; font-size: 12px; padding: 7px 14px; border-radius: 4px; letter-spacing: 1px;
-}
 #taskbar-windows { flex: 1; display: flex; gap: 6px; }
 .taskbar-item {
   background: #333; color: #ddd; border: 1px solid #555; font-size: 11.5px;
   padding: 6px 12px; border-radius: 3px;
 }
 .taskbar-item.active { background: #4a4a4a; color: #fff; border-color: #777; }
+#taskbar-date { color: #aaa; font-size: 11.5px; }
 #taskbar-clock { color: #ddd; font-size: 12px; }
 
 /* ===================== FEEDBACK TOAST ===================== */
