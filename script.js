@@ -152,26 +152,58 @@ const Game = {
   shakeTimers: {},
   topZIndex: 30,
   storyMode: false,
-  storyQueue: [],
-  storyIndex: 0,
-  storyWrongfulDenials: 0
+  storyDays: [],
+  storyDayIndex: 0,
+  storyCardIndex: 0,
+  storyWrongfulDenials: 0,
+  securityIncidents: 0,
+  bossWarnSent: false,
+  bossThreatSent: false,
+  inbox: [],
+  awaitingShiftEmail: false
 };
 
 /* ----------------------- STORY MODE ----------------------- */
 
-const STORY_SHIFTS = [
-  { ids: [1, 31, 3, 38, 11] },
-  { ids: [28, 13, 33, 34, 37] },
-  { ids: [24, 39, 17, 27, 40] }
-];
-const STORY_ROSTER_IDS = STORY_SHIFTS.flatMap(s => s.ids);
-const STORY_SHIFT_STARTS = [0, 5, 10];
+const STORY_DAY_COUNT = 5;
 const STORY_ZYAN_ID = 40;
 
-const STORY_BRIEFINGS = [
-  'A routine night. Confirm each person is who they claim to be — match the name on the profile to the name on the email, and watch the domains. Most of tonight is noise. Get your eye in.',
-  'Sharper requests tonight. Some applicants aren’t just asking for access — they want you to reset something, approve a prompt, confirm a code. Real IT never asks you to approve their login. Read what they want, not just who they are.',
-  'The SOC says someone has been probing us all week — those junk applications were reconnaissance. Tonight they make their move, and they’ll look like one of us. Verify every name against what you already know to be real. Hold the line.'
+// Applicants pinned to a specific day (0-based). Everyone else is shuffled into
+// days by difficulty band so each playthrough varies but the days still escalate.
+const STORY_ANCHORS = [
+  { id: 28, day: 1 },              // real Ryan Zoch, internal transfer from the genuine domain
+  { id: 34, day: 1 },              // Leviticus Cornwall, plants the zyan.roch.helper clue
+  { id: 51, day: 3 },              // Mark Aegis, CEO impersonation
+  { id: 40, day: 4, last: true }   // Zyan Roch, the finale, always the last card of the week
+];
+
+const STORY_BOSS = {
+  name: 'Helen Park',
+  title: 'CISO, Aegis Dynamics',
+  address: 'helen.park@aegisdynamics.com'
+};
+
+const STORY_DAY_BRIEFINGS = [
+  {
+    title: 'NIGHT 1 / ORIENTATION',
+    body: 'Welcome to the night shift. Every name on your screen wants access to a defense contractor\'s systems, and tonight is the easy part: prove each one is who they claim to be. Match the name on the profile to the name on the email, and watch the domains. Most of tonight is noise. Get your eye in.'
+  },
+  {
+    title: 'NIGHT 2 / INTENT',
+    body: 'Stop reading who they are and start reading what they want. The requests sharpen tonight: VPN logins, MFA approvals, a Social Security number "for the file." Real IT never asks you to approve their login, and no honest applicant needs your credentials. Watch one name in particular, and remember it.'
+  },
+  {
+    title: 'NIGHT 3 / THE PATTERN',
+    body: 'The SOC flagged something. The junk applications all week were not random. Someone is mapping us one harmless request at a time, and the lookalike domains are getting good. One letter off is still off. Cross-reference everything against what you already know is real.'
+  },
+  {
+    title: 'NIGHT 4 / THE NET TIGHTENS',
+    body: 'It is one operator. The SOC is certain now. The scattered scams, the borrowed names, the grandson with the foreign email address: all the same hand. Tonight they reach higher, maybe all the way to the top. If a request feels too important to question, question it twice.'
+  },
+  {
+    title: 'NIGHT 5 / THE ADVERSARY',
+    body: 'This is the night they make their move, and they will look like one of us. Everything you learned this week comes down to the last face on your screen. Verify every name against what you know to be real. Hold the line.'
+  }
 ];
 
 const STORY_FINALE_REVEAL = {
@@ -182,28 +214,87 @@ const STORY_FINALE_REVEAL = {
 const STORY_ENDINGS = {
   good: {
     title: 'YOU HELD THE LINE',
-    subtitle: 'Aegis is secure tonight; the operator’s campaign is burned. The SOC has a name now: Zyan Roch. That’s all he got.'
+    subtitle: 'Aegis is secure. The operator\'s week of probing ends with nothing to show for it, and the SOC finally has a name: Zyan Roch. You caught the one that mattered.'
+  },
+  commendation: {
+    title: 'COMMENDATION',
+    subtitle: 'You held the line and barely put a foot wrong all week. The impostor never got close, no qualified hire was turned away in error, and the CISO has put your name forward for the day shift. Few screeners are ever this clean.'
   },
   breach: {
     title: 'AEGIS WAS BREACHED',
-    subtitle: 'The test-stand data is gone and the board wants answers by morning. You caught small fish all week and let the shark walk through the front door.'
+    subtitle: 'The signing link went out, and "Ryan Zoch" was never Ryan. The propulsion test-stand archives are gone by morning and the board wants answers. You caught small fish all week and let the shark walk through the front door.'
+  },
+  catastrophicBreach: {
+    title: 'TOTAL COMPROMISE',
+    subtitle: 'It was never just one bad call. You waved through the grandsons, the assistants, the returning employees, and finally the operator himself. By morning Aegis has no secrets left to steal. They will be studying this breach for years.'
   },
   termination: {
     title: 'TERMINATED',
-    subtitle: 'Company integrity is gone, and Security walked you out before the week was over. Somewhere out there, Zyan Roch is still mapping Aegis. Now it’s someone else’s problem.'
+    subtitle: 'Company integrity hit zero. Too many hostile actors walked through your gate, and Security walked you out before the week was over. Somewhere out there, Zyan Roch is still mapping Aegis. Now it is someone else\'s problem.'
   },
   deniedTooMany: {
-    title: 'TERMINATED — POOR JUDGMENT',
-    subtitle: 'You denied six qualified applicants this week. The board doesn’t care that the impersonator never got through — they care that Aegis nearly lost six good hires because you couldn’t tell friend from foe. You’re fired, effective immediately. Somewhere out there, Zyan Roch is still mapping Aegis. Now it’s someone else’s problem to catch him.'
+    title: 'TERMINATED / POOR JUDGMENT',
+    subtitle: 'You denied a dozen qualified applicants this week. The board does not care that the impostor never got through; they care that Aegis nearly lost a dozen good hires because you could not tell friend from foe. You are done here.'
   }
 };
 
-const WRONGFUL_DENIAL_WARN_AT = 2;
-const WRONGFUL_DENIAL_THREAT_AT = 4;
-const WRONGFUL_DENIAL_FIRED_AT = 6;
+const WRONGFUL_DENIAL_WARN_AT = 4;
+const WRONGFUL_DENIAL_THREAT_AT = 8;
+const WRONGFUL_DENIAL_FIRED_AT = 12;
 
-const BOSS_WARN_MESSAGE = 'I’m seeing a pattern of denied applicants who check out fine. We need these hires — ease up on the trigger finger.';
-const BOSS_THREAT_MESSAGE = 'This is the second time I’m flagging this. Four legitimate denials this week. One more and HR gets involved — this is your last warning.';
+// End-of-shift email content from the boss. Each returns the message body shown in
+// MailHub. Ending emails carry an `outcome` that fires when the player reads them.
+function buildBossShiftEmail(dayIndex) {
+  const lastWorkingDay = dayIndex >= STORY_DAY_COUNT - 1;
+  const denials = Game.storyWrongfulDenials;
+  const incidents = Game.securityIncidents;
+
+  if (Game.health <= 0) {
+    return {
+      subject: 'Access revoked - end of shift',
+      isEnding: true, outcome: incidents >= 4 ? 'catastrophicBreach' : 'termination',
+      body: 'It is over.\n\nCompany integrity has bottomed out. Too many hostile actors got past your desk this week, and the breach team is already in the building. I argued for you as long as I could. I could not argue with the logs.\n\nSecurity is on their way to your station. Leave the badge.\n\n- Helen Park, CISO'
+    };
+  }
+  if (denials >= WRONGFUL_DENIAL_FIRED_AT) {
+    return {
+      subject: 'We need to talk - effective immediately',
+      isEnding: true, outcome: 'deniedTooMany',
+      body: 'I have HR on the line.\n\nThat is a dozen qualified people you turned away this week. Good engineers, good hires, gone because they pinged your radar wrong. The business cannot run a gate that says no to everyone.\n\nI am sorry. This is your last shift. Hand off the queue.\n\n- Helen Park, CISO'
+    };
+  }
+  if (denials >= WRONGFUL_DENIAL_THREAT_AT && !Game.bossThreatSent) {
+    Game.bossThreatSent = true;
+    return {
+      subject: 'Second warning - read this',
+      isEnding: false,
+      body: 'This is the second time I am flagging this.\n\nThat is ' + denials + ' legitimate applicants you have denied this week. I get it, the job is to be suspicious. But suspicion that rejects every good hire is just a different kind of failure. One more pattern like this and HR makes it official.\n\nTighten it up. I am rooting for you.\n\n- Helen Park, CISO'
+    };
+  }
+  if (denials >= WRONGFUL_DENIAL_WARN_AT && !Game.bossWarnSent) {
+    Game.bossWarnSent = true;
+    return {
+      subject: 'Quick note on tonight',
+      isEnding: false,
+      body: 'Good work catching the obvious ones.\n\nOne thing: I am seeing a few denials on applicants who check out completely fine. We genuinely need these hires, so do not let the paranoia run away with you. Approve the real people. Deny the wrong ones. Easy to say, I know.\n\nSee you tomorrow night.\n\n- Helen Park, CISO'
+    };
+  }
+  if (incidents >= 2) {
+    return {
+      subject: 'End of shift - flag on the logs',
+      isEnding: false,
+      body: 'Shift logged.\n\nHeads up: the SOC bounced a couple of approvals from your desk tonight that should never have cleared. Integrity took a hit. Whoever is probing us is getting better, so slow down and read the domains twice.\n\nWe will get them. See you tomorrow.\n\n- Helen Park, CISO'
+    };
+  }
+  return {
+    subject: lastWorkingDay ? 'Last night - stay sharp' : 'End of shift - nice work',
+    isEnding: false,
+    body: (lastWorkingDay
+      ? 'Clean shift again. One night left.\n\nWhatever has been circling us all week is going to take its shot before the weekend. Trust what you have learned. The real ones look ordinary; the dangerous ones look almost ordinary.\n\nHold the line tomorrow.'
+      : 'Clean shift. The gate held and the real hires made it through.\n\nThis is exactly what the job looks like when it is done right. Get some sleep and do it again tomorrow.')
+      + '\n\n- Helen Park, CISO'
+  };
+}
 
 /* ----------------------- BOOT LOG / LOGIN ----------------------- */
 
@@ -283,12 +374,18 @@ function startGame(storyMode) {
   Game.correctCount = 0;
   Game.over = false;
   Game.topZIndex = 30;
-  Game.storyIndex = 0;
+  Game.storyDayIndex = 0;
+  Game.storyCardIndex = 0;
   Game.storyWrongfulDenials = 0;
-  Game.storyQueue = Game.storyMode
-    ? STORY_ROSTER_IDS.map(id => Game.people.find(p => p.id === id)).filter(Boolean)
-    : [];
-  Game.totalCases = Game.storyMode ? Game.storyQueue.length : Game.people.length;
+  Game.securityIncidents = 0;
+  Game.bossWarnSent = false;
+  Game.bossThreatSent = false;
+  Game.awaitingShiftEmail = false;
+  Game.inbox = [];
+  Game.storyDays = Game.storyMode ? buildStoryDays() : [];
+  Game.totalCases = Game.storyMode
+    ? Game.storyDays.reduce((n, d) => n + d.length, 0)
+    : Game.people.length;
   document.getElementById('crash-overlay').classList.add('hidden');
   document.getElementById('intrusion-popup-layer').innerHTML = '';
   document.getElementById('boss-notification-layer').innerHTML = '';
@@ -300,13 +397,15 @@ function startGame(storyMode) {
   renderHistory();
   updateFooter();
   updateTipsCopy();
+  renderInbox();
+  updateMailBadge();
   startClock();
   openWindow('tips');
   centerWindow(document.getElementById('window-tips'));
   startShakeWatcher();
 
   if (Game.storyMode) {
-    storyAdvance();
+    startStoryDay(0);
   } else {
     nextRound();
   }
@@ -315,6 +414,23 @@ function startGame(storyMode) {
 function updateTipsCopy() {
   const body = document.querySelector('#window-tips .tips-body');
   if (!body) return;
+  if (Game.storyMode) {
+    body.querySelector('h2').textContent = 'Night Shift, Aegis Dynamics.';
+    body.querySelector('h2 + p').innerHTML =
+      'One applicant at a time. They appear on <strong>LinkedOut</strong>, ' +
+      '<strong>MailHub</strong>, and <strong>PingMe</strong>. Approve who is real, deny who is not, ' +
+      'and survive five nights.';
+    body.querySelector('ul').innerHTML =
+      '<li>Cross-reference the profile, the email, and the text before you decide.</li>' +
+      '<li>Open the <strong>Case File</strong> to Approve or Deny. It also holds your history.</li>' +
+      '<li>Watch the email domains. One letter off is still off.</li>' +
+      '<li>Approving a hostile actor costs integrity; clicking their links does too.</li>' +
+      '<li>At the end of each night, read the boss\'s message in <strong>MailHub</strong> to clock out.</li>' +
+      '<li>The unread badge on MailHub means the shift is not over yet.</li>';
+    body.querySelector('.tips-reminder').innerHTML =
+      'Reopen this anytime from the <strong>Tips</strong> icon.';
+    return;
+  }
   if (APPLICANTS_PER_ROUND === 1) {
     body.querySelector('h2 + p').innerHTML =
       'Each shift, one candidate applies at a time &mdash; and they show up identically on ' +
@@ -342,10 +458,50 @@ function updateTipsCopy() {
 
 /* ----------------------- STORY MODE FLOW ----------------------- */
 
-function showStoryBriefing(shiftNumber, onDone) {
+function buildStoryDays() {
+  const anchorIds = new Set(STORY_ANCHORS.map(a => a.id));
+  const pool = Game.people.filter(p => !anchorIds.has(p.id));
+  // Sort by difficulty with a random tiebreak: days escalate, but which same-tier
+  // applicants land on which day varies every playthrough.
+  const ranked = pool.map(p => ({ p, rk: p.difficulty + Math.random() * 0.999 }));
+  ranked.sort((a, b) => a.rk - b.rk);
+  const sorted = ranked.map(r => r.p);
+
+  const anchorsPerDay = new Array(STORY_DAY_COUNT).fill(0);
+  STORY_ANCHORS.forEach(a => { anchorsPerDay[a.day]++; });
+  const target = Math.round(Game.people.length / STORY_DAY_COUNT); // ~20
+
+  const days = [];
+  let cursor = 0;
+  for (let d = 0; d < STORY_DAY_COUNT; d++) {
+    const take = Math.max(0, target - anchorsPerDay[d]);
+    days.push(sorted.slice(cursor, cursor + take));
+    cursor += take;
+  }
+  if (cursor < sorted.length) days[STORY_DAY_COUNT - 1].push(...sorted.slice(cursor));
+
+  for (let d = 0; d < STORY_DAY_COUNT; d++) days[d] = shuffle(days[d]);
+
+  STORY_ANCHORS.filter(a => !a.last).forEach(a => {
+    const person = Game.people.find(p => p.id === a.id);
+    if (!person) return;
+    const arr = days[a.day];
+    arr.splice(Math.floor(Math.random() * (arr.length + 1)), 0, person);
+  });
+  STORY_ANCHORS.filter(a => a.last).forEach(a => {
+    const person = Game.people.find(p => p.id === a.id);
+    if (person) days[a.day].push(person);
+  });
+  return days;
+}
+
+function showStoryBriefing(dayIndex, onDone) {
   const overlay = document.getElementById('story-briefing');
-  document.getElementById('story-briefing-title').textContent = `SHIFT ${shiftNumber} BRIEFING`;
-  document.getElementById('story-briefing-body').textContent = STORY_BRIEFINGS[shiftNumber - 1];
+  const brief = STORY_DAY_BRIEFINGS[dayIndex];
+  document.getElementById('story-briefing-title').textContent = brief.title;
+  document.getElementById('story-briefing-body').textContent = brief.body;
+  const dayEl = document.getElementById('story-briefing-day');
+  if (dayEl) dayEl.textContent = 'NIGHT ' + (dayIndex + 1) + ' OF ' + STORY_DAY_COUNT;
   overlay.classList.remove('hidden');
   const btn = document.getElementById('story-briefing-btn');
   const handler = () => {
@@ -369,22 +525,57 @@ function showStoryReveal(text, onDone) {
   btn.addEventListener('click', handler);
 }
 
+function startStoryDay(dayIndex) {
+  if (Game.over) return;
+  Game.storyDayIndex = dayIndex;
+  Game.storyCardIndex = 0;
+  Game.awaitingShiftEmail = false;
+  showStoryBriefing(dayIndex, renderStoryCard);
+}
+
 function renderStoryCard() {
-  const p = Game.storyQueue[Game.storyIndex];
-  Game.round = [{ person: p, platform: null, decided: false }];
+  const day = Game.storyDays[Game.storyDayIndex] || [];
+  const p = day[Game.storyCardIndex];
+  Game.round = p ? [{ person: p, platform: null, decided: false }] : [];
   renderRound();
 }
 
-function storyAdvance() {
-  if (Game.over) return;
-  const idx = Game.storyIndex;
-  if (idx >= Game.storyQueue.length) return;
-  const shiftStartPos = STORY_SHIFT_STARTS.indexOf(idx);
-  if (shiftStartPos !== -1) {
-    showStoryBriefing(shiftStartPos + 1, renderStoryCard);
-  } else {
-    renderStoryCard();
+function advanceStoryCard() {
+  const day = Game.storyDays[Game.storyDayIndex] || [];
+  Game.storyCardIndex++;
+  if (Game.health <= 0 || Game.storyCardIndex >= day.length) {
+    endOfShift();
+    return;
   }
+  renderStoryCard();
+}
+
+function endOfShift() {
+  Game.awaitingShiftEmail = true;
+  Game.round = [];
+  renderRound();
+  const email = buildBossShiftEmail(Game.storyDayIndex);
+  deliverInboxMessage({
+    from: STORY_BOSS.name + ' (' + STORY_BOSS.title + ')',
+    address: STORY_BOSS.address,
+    subject: email.subject,
+    body: email.body,
+    read: false,
+    isBoss: true,
+    isEnding: !!email.isEnding,
+    outcome: email.outcome || null
+  });
+  showShiftEndNotification();
+}
+
+function advanceToNextDay() {
+  Game.awaitingShiftEmail = false;
+  if (Game.storyDayIndex + 1 >= STORY_DAY_COUNT) {
+    // Safety net: should normally end on the finale card.
+    endGame('good');
+    return;
+  }
+  startStoryDay(Game.storyDayIndex + 1);
 }
 
 function triggerGlitch() {
@@ -443,28 +634,129 @@ function triggerMegaGlitchAndCrash(onComplete) {
   }, 900);
 }
 
-function showBossNotification(message, strong) {
+/* ----------------------- MAILHUB INBOX ----------------------- */
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function unreadBossCount() {
+  return Game.inbox.filter(m => m.isBoss && !m.read).length;
+}
+
+function updateMailBadge() {
+  const n = unreadBossCount();
+  const iconBadge = document.querySelector('.desktop-icon[data-window="email"] .icon-badge');
+  if (iconBadge) { iconBadge.textContent = n; iconBadge.classList.toggle('hidden', n === 0); }
+  const folderBadge = document.getElementById('inbox-folder-badge');
+  if (folderBadge) { folderBadge.textContent = n; folderBadge.classList.toggle('hidden', n === 0); }
+}
+
+function deliverInboxMessage(msg) {
+  Game.inbox.unshift(msg);
+  renderInbox();
+  updateMailBadge();
+}
+
+function renderInbox() {
+  const list = document.getElementById('email-inbox-list');
+  if (!list) return;
+  list.innerHTML = '';
+  Game.inbox.forEach((m, i) => {
+    const row = document.createElement('div');
+    row.className = 'email-inbox-row' + (m.read ? '' : ' unread');
+    row.innerHTML =
+      '<div class="email-inbox-sender">' + (m.read ? '' : '<span class="unread-dot"></span>') +
+        escapeHtml(m.from) + '</div>' +
+      '<div class="email-inbox-subject">' + escapeHtml(m.subject) + '</div>';
+    row.addEventListener('click', () => openBossMessage(i));
+    list.appendChild(row);
+  });
+  const p = Game.round[0] && Game.round[0].person;
+  if (p && p.email) {
+    const row = document.createElement('div');
+    row.className = 'email-inbox-row email-inbox-applicant';
+    row.innerHTML =
+      '<div class="email-inbox-sender">' + escapeHtml(p.email.senderName) + '</div>' +
+      '<div class="email-inbox-subject">' + escapeHtml(p.email.subject) + '</div>';
+    row.addEventListener('click', showApplicantEmailPane);
+    list.appendChild(row);
+  }
+}
+
+function showApplicantEmailPane() {
+  const boss = document.getElementById('email-boss-content');
+  if (boss) boss.classList.add('hidden');
+  const p = Game.round[0] && Game.round[0].person;
+  document.getElementById('email-empty').classList.toggle('hidden', !!(p && p.email));
+  document.getElementById('email-content').classList.toggle('hidden', !(p && p.email));
+}
+
+function openBossMessage(index) {
+  const m = Game.inbox[index];
+  if (!m) return;
+  const wasUnread = !m.read;
+  m.read = true;
+  updateMailBadge();
+  renderInbox();
+  document.getElementById('email-empty').classList.add('hidden');
+  document.getElementById('email-content').classList.add('hidden');
+  const boss = document.getElementById('email-boss-content');
+  boss.classList.remove('hidden');
+  document.getElementById('boss-msg-subject').textContent = m.subject;
+  document.getElementById('boss-msg-from').textContent = m.from;
+  document.getElementById('boss-msg-address').textContent = m.address || '';
+  document.getElementById('boss-msg-body').textContent = m.body;
+  const action = document.getElementById('boss-msg-action');
+  const isPending = Game.awaitingShiftEmail && index === 0 && m.isBoss;
+  if (isPending) {
+    action.classList.remove('hidden');
+    action.textContent = m.isEnding ? 'Acknowledge' : 'Clock out and start next shift';
+    action.onclick = () => {
+      action.classList.add('hidden');
+      action.onclick = null;
+      Game.awaitingShiftEmail = false;
+      document.getElementById('boss-notification-layer').innerHTML = '';
+      if (m.isEnding) endGame(m.outcome);
+      else advanceToNextDay();
+    };
+  } else {
+    action.classList.add('hidden');
+    action.onclick = null;
+  }
+}
+
+function showShiftEndNotification() {
   const layer = document.getElementById('boss-notification-layer');
+  layer.innerHTML = '';
   const note = document.createElement('div');
-  note.className = 'boss-notification' + (strong ? ' boss-notification-strong' : '');
-  const title = document.createElement('span');
-  title.className = 'boss-notification-title';
-  title.textContent = strong ? '⚠ Message from the Boss' : '📋 Message from the Boss';
-  const body = document.createElement('span');
-  body.textContent = message;
-  note.appendChild(title);
-  note.appendChild(body);
+  note.className = 'boss-notification boss-notification-shiftend';
+  note.innerHTML =
+    '<span class="boss-notification-title">✉ New message - ' + escapeHtml(STORY_BOSS.name) + '</span>' +
+    '<span>End of shift. You have an unread message in MailHub. Read it to clock out.</span>' +
+    '<span class="boss-notification-hint">Click here to open your inbox</span>';
+  note.addEventListener('click', () => {
+    openWindow('email');
+    const unreadIdx = Game.inbox.findIndex(m => m.isBoss && !m.read);
+    if (unreadIdx !== -1) openBossMessage(unreadIdx);
+  });
   layer.appendChild(note);
-  setTimeout(() => note.remove(), 7000);
+}
+
+function isCleanRecord() {
+  return Game.securityIncidents === 0 && Game.storyWrongfulDenials <= 2;
 }
 
 function finishStoryZyan(approved) {
   if (approved) {
+    const outcome = Game.securityIncidents >= 4 ? 'catastrophicBreach' : 'breach';
     triggerMegaGlitchAndCrash(() => {
-      showStoryReveal(STORY_FINALE_REVEAL.approved, () => endGame('breach'));
+      showStoryReveal(STORY_FINALE_REVEAL.approved, () => endGame(outcome));
     });
   } else {
-    showStoryReveal(STORY_FINALE_REVEAL.denied, () => endGame('good'));
+    const outcome = isCleanRecord() ? 'commendation' : 'good';
+    showStoryReveal(STORY_FINALE_REVEAL.denied, () => endGame(outcome));
   }
 }
 
@@ -562,9 +854,12 @@ function renderLinkedinWindow(p) {
 function renderEmailWindow(p) {
   const emptyEl = document.getElementById('email-empty');
   const contentEl = document.getElementById('email-content');
+  const bossEl = document.getElementById('email-boss-content');
+  if (bossEl) bossEl.classList.add('hidden');
   if (!p || !p.email) {
     emptyEl.classList.remove('hidden');
     contentEl.classList.add('hidden');
+    renderInbox();
     return;
   }
   emptyEl.classList.add('hidden');
@@ -574,6 +869,7 @@ function renderEmailWindow(p) {
   document.getElementById('email-sender-address').textContent = p.email.senderAddress;
   document.getElementById('email-applicant-line').textContent = `Applicant age: ${p.age || '-'} | Gender: ${p.gender || '-'}`;
   document.getElementById('email-body-text').textContent = p.email.body;
+  renderInbox();
 }
 
 function renderTextWindow(p) {
@@ -857,22 +1153,22 @@ function decideEntry(entry, approved) {
     }
   } else {
     const damage = 8 + p.difficulty * 4;
-    Game.health -= damage;
     if (!Game.storyMode) {
+      Game.health -= damage;
       Game.streak = 0;
       Game.difficulty = Math.max(1, Game.difficulty - 1);
       showToast(false, approved
         ? `Mistake! ${p.name} was a fraudulent applicant. -${damage}% integrity.`
         : `Mistake! ${p.name} was a real hire, wrongly denied. -${damage}% integrity.`);
-    } else if (approved && p.isFake && p.id !== STORY_ZYAN_ID) {
-      triggerStoryFakeGlitch(p.difficulty);
+    } else if (approved && p.isFake) {
+      // Story mode: approving a hostile actor is the integrity failure track.
+      Game.health -= damage;
+      Game.securityIncidents++;
+      if (p.id !== STORY_ZYAN_ID) triggerStoryFakeGlitch(p.difficulty);
     } else if (!approved && !p.isFake) {
+      // Story mode: denying a real hire is a separate (wrongful-denial) track,
+      // tracked toward the firing ending rather than draining integrity.
       Game.storyWrongfulDenials++;
-      if (Game.storyWrongfulDenials === WRONGFUL_DENIAL_WARN_AT) {
-        showBossNotification(BOSS_WARN_MESSAGE, false);
-      } else if (Game.storyWrongfulDenials === WRONGFUL_DENIAL_THREAT_AT) {
-        showBossNotification(BOSS_THREAT_MESSAGE, true);
-      }
     }
   }
   Game.peakDifficulty = Math.max(Game.peakDifficulty, Game.difficulty);
@@ -888,29 +1184,25 @@ function decideEntry(entry, approved) {
   renderApplicationRound();
   renderHistory();
 
-  if (Game.storyMode && Game.storyWrongfulDenials >= WRONGFUL_DENIAL_FIRED_AT) {
-    setTimeout(() => endGame('deniedTooMany'), 900);
-    return;
-  }
-
-  if (Game.storyMode && p.id === STORY_ZYAN_ID) {
-    setTimeout(() => finishStoryZyan(approved), 900);
+  if (Game.storyMode) {
+    if (p.id === STORY_ZYAN_ID) {
+      setTimeout(() => finishStoryZyan(approved), 900);
+    } else {
+      // No mid-shift firing or termination: consequences arrive in the
+      // end-of-shift email, which the player must read to clock out.
+      setTimeout(advanceStoryCard, 900);
+    }
     return;
   }
 
   if (Game.health <= 0) {
     Game.health = 0;
     updateFooter();
-    setTimeout(() => endGame(Game.storyMode ? 'termination' : false), 900);
+    setTimeout(() => endGame(false), 900);
     return;
   }
   if (Game.round.every(r => r.decided)) {
-    if (Game.storyMode) {
-      Game.storyIndex++;
-      setTimeout(storyAdvance, 900);
-    } else {
-      setTimeout(nextRound, 900);
-    }
+    setTimeout(nextRound, 900);
   }
 }
 
@@ -927,7 +1219,9 @@ function handleScamLinkClick(p, linkEl) {
   if (Game.health <= 0) {
     Game.health = 0;
     updateFooter();
-    setTimeout(() => endGame(Game.storyMode ? 'termination' : false), 900);
+    // In story mode, zero integrity is delivered as a termination email at the
+    // end of the shift rather than ending the game mid-card.
+    if (!Game.storyMode) setTimeout(() => endGame(false), 900);
   }
 }
 
@@ -949,8 +1243,9 @@ function endGame(outcome) {
   document.getElementById('end-screen').classList.remove('hidden');
 
   if (Game.storyMode) {
-    const ending = STORY_ENDINGS[outcome];
-    document.getElementById('end-screen').classList.toggle('breach-glitch', outcome === 'breach');
+    const ending = STORY_ENDINGS[outcome] || STORY_ENDINGS.good;
+    const isBreach = outcome === 'breach' || outcome === 'catastrophicBreach';
+    document.getElementById('end-screen').classList.toggle('breach-glitch', isBreach);
     document.getElementById('end-title').textContent = ending.title;
     document.getElementById('end-subtitle').textContent = ending.subtitle;
   } else {
@@ -1053,6 +1348,15 @@ function bringToFront(win) {
   document.querySelectorAll('.window').forEach(w => w.classList.remove('focused'));
   win.classList.add('focused');
   Game.topZIndex += 1;
+  // Keep the counter from creeping into the notification/overlay layers over a long
+  // session: renormalize window z-indexes while preserving their stacking order.
+  if (Game.topZIndex > 200) {
+    const wins = [...document.querySelectorAll('.window')]
+      .sort((a, b) => (Number(a.style.zIndex) || 0) - (Number(b.style.zIndex) || 0));
+    let z = 31;
+    wins.forEach(w => { if (w !== win) w.style.zIndex = z++; });
+    Game.topZIndex = z;
+  }
   win.style.zIndex = Game.topZIndex;
   Game.focusedWindow = win.dataset.window;
   syncTaskbar();

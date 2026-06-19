@@ -29,17 +29,28 @@ browser (via a local static server — see below) and play.
   decision history right below it, each fake flagged with a collapsible
   "Why was this flagged?" reason) and a High Scores page, which persists
   across reloads via `localStorage`.
-- **Story Mode.** A scripted 15-card campaign across 3 shifts (briefing
-  before each), reusing the same windows/Case File flow as Endless mode but
-  with a fixed roster, a named-antagonist finale (Zyan Roch impersonating
-  real employee Ryan Zoch via a typosquatted domain), and three endings
-  (GOOD / BREACH / TERMINATION). Story Mode hides the integrity/threat/score/
-  approval stats in the Case File (only the case counter shows), gives no
-  correct/wrong feedback on decisions, and instead signals a wrong call by
-  glitching — escalating with the fake's difficulty rating, from a quick
-  screen flash up to flashing intrusion popups and temporarily-corrupted
-  windows. Approving the final card (Zyan) triggers a full "system crash"
-  before the reveal. Story Mode never writes to the high-score table.
+- **Story Mode.** A five-night campaign that runs through all 100 applicants,
+  reusing the same windows/Case File flow as Endless mode. Each night opens
+  with a redesigned briefing overlay and ends only when you read the boss's
+  end-of-shift message in MailHub. The roster is rebuilt each playthrough:
+  applicants are sorted into nights by difficulty (so the week escalates) but
+  shuffled within their band (so the order varies), while four anchors stay
+  pinned to specific nights and the named antagonist, Zyan Roch (impersonating
+  real employee Ryan Zoch via the `aegisdynarnics.com` typosquat), is always
+  the final card. Story Mode hides the integrity/threat/score/approval stats
+  (only the case counter shows), gives no correct/wrong feedback on decisions,
+  and signals a wrong call by glitching — escalating with the fake's difficulty,
+  from a screen flash up to flashing intrusion popups and temporarily-corrupted
+  windows. Approving the final card triggers a full "system crash" before the
+  reveal. Six endings: COMMENDATION, YOU HELD THE LINE, AEGIS WAS BREACHED,
+  TOTAL COMPROMISE, TERMINATED (integrity), and TERMINATED / POOR JUDGMENT
+  (too many wrongful denials). Story Mode never writes to the high-score table.
+- **MailHub inbox.** MailHub has a real inbox list (current applicant plus
+  the boss's messages) with an unread-count badge on its desktop icon and the
+  Inbox header. End-of-shift consequences (routine note, warning, threat,
+  firing, termination, or the finale) arrive as a boss email; the night does
+  not advance until you open and acknowledge it. Nobody is fired mid-shift —
+  every ending is delivered through that email.
 - **Fullscreen prompt + button.** On load, a popup recommends playing in
   fullscreen with a button to request it (or continue windowed); a small
   fullscreen toggle also lives in the taskbar.
@@ -48,7 +59,8 @@ browser (via a local static server — see below) and play.
 
 All applicant content — name, age, job, LinkedIn bio/experience, email,
 text message, scam links, fake/real flag, difficulty — lives in
-[`data/people.csv`](data/people.csv) (51 rows). `script.js` parses the CSV
+[`data/people.csv`](data/people.csv) (100 rows: 55 legitimate applicants and
+45 fakes, spread across difficulty 1–5). `script.js` parses the CSV
 client-side at load (hand-rolled CSV parser, no library) and normalizes each
 row into a `person` object consumed by the renderers. Adding or editing an
 applicant only requires editing the CSV; no code changes needed.
@@ -57,9 +69,10 @@ The reason text shown for each fake in the Case File history ("Why was this
 flagged?") is a separate hand-written map (`FAKE_REASONS` in `script.js`,
 keyed by applicant id) rather than a CSV column.
 
-Profile pictures live in [`images/`](images) as `p1.jpeg`–`p51.jpeg`. If an
-image fails to load, `setImgWithFallback()` swaps in a generated
-initials-on-gray-circle placeholder instead of a broken image icon.
+Profile pictures live in [`images/`](images) as `p1.jpeg`–`p100.jpeg`. If an
+image fails to load (several higher-numbered photos are not yet supplied),
+`setImgWithFallback()` swaps in a generated initials-on-gray-circle
+placeholder instead of a broken image icon.
 
 ## Project structure
 

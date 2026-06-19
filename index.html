@@ -49,10 +49,12 @@
 
 <!-- ============ STORY MODE: SHIFT BRIEFING ============ -->
 <div id="story-briefing" class="story-overlay hidden">
-  <div class="story-box">
-    <div class="story-box-title" id="story-briefing-title">SHIFT 1 BRIEFING</div>
-    <p class="story-box-body" id="story-briefing-body"></p>
-    <button id="story-briefing-btn">BEGIN SHIFT</button>
+  <div class="story-box briefing-box">
+    <div class="briefing-daytag" id="story-briefing-day">NIGHT 1 OF 5</div>
+    <div class="story-box-title briefing-title" id="story-briefing-title">NIGHT 1 / ORIENTATION</div>
+    <div class="briefing-divider"></div>
+    <p class="story-box-body briefing-body" id="story-briefing-body"></p>
+    <button id="story-briefing-btn" class="briefing-btn">CLOCK IN</button>
   </div>
 </div>
 
@@ -82,6 +84,7 @@
     </button>
     <button class="desktop-icon" data-window="email">
       <span class="icon-glyph icon-email">&#9993;</span>
+      <span class="icon-badge hidden" id="mail-icon-badge">0</span>
       <span class="icon-label">MailHub</span>
     </button>
     <button class="desktop-icon" data-window="text">
@@ -177,15 +180,12 @@
       </div>
     </div>
     <div class="window-body email-body">
-      <div class="email-sidebar">
-        <button class="email-compose fx-btn">+ Compose</button>
-        <div class="email-folder active fx-btn">Inbox</div>
-        <div class="email-folder fx-btn">Sent</div>
-        <div class="email-folder fx-btn">Spam</div>
-        <div class="email-folder fx-btn">Trash</div>
+      <div class="email-inbox">
+        <div class="email-inbox-head">Inbox <span id="inbox-folder-badge" class="inbox-badge hidden">0</span></div>
+        <div id="email-inbox-list" class="email-inbox-list"></div>
       </div>
       <div class="email-reading-pane" id="email-reading-pane">
-        <div class="email-empty" id="email-empty">No message from this round's candidates.</div>
+        <div class="email-empty" id="email-empty">No message selected.</div>
         <div class="email-content hidden" id="email-content">
           <h2 id="email-subject">&nbsp;</h2>
           <div class="email-meta">
@@ -195,6 +195,16 @@
           <div class="email-applicant-line" id="email-applicant-line">&nbsp;</div>
           <hr>
           <pre id="email-body-text"></pre>
+        </div>
+        <div class="email-boss-content hidden" id="email-boss-content">
+          <h2 id="boss-msg-subject">&nbsp;</h2>
+          <div class="email-meta">
+            <span id="boss-msg-from">&nbsp;</span>
+            <span class="email-addr">&lt;<span id="boss-msg-address"></span>&gt;</span>
+          </div>
+          <hr>
+          <pre id="boss-msg-body"></pre>
+          <button id="boss-msg-action" class="hidden"></button>
         </div>
       </div>
     </div>
