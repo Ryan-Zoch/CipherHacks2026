@@ -45,6 +45,28 @@ browser (via a local static server — see below) and play.
   reveal. Six endings: COMMENDATION, YOU HELD THE LINE, AEGIS WAS BREACHED,
   TOTAL COMPROMISE, TERMINATED (integrity), and TERMINATED / POOR JUDGMENT
   (too many wrongful denials). Story Mode never writes to the high-score table.
+- **Escalating mechanics (Story Mode).** Each night layers a new mechanic on
+  top of the last, Papers-Please style:
+  - **Night 2 — Company Directory:** the SecOps Console unlocks an allowlist of
+    the genuine `aegisdynamics.com` domain and verified internal staff to
+    cross-check against.
+  - **Night 3 — Threat Bulletin:** a cumulative blocklist of flagged domains,
+    emails, and aliases (the operator's breadcrumbs). Approving a blocklisted
+    applicant bypasses the mistake buffer and deals extra integrity damage.
+  - **Night 4 — CISO Directive (Engineering Freeze):** a command order that
+    overrides normal judgment — every "Engineer" role must be denied that night,
+    legitimate or not. Stays in effect Night 5. The Case File history explains
+    any role denied under the freeze.
+  - **Night 5 — Live Intrusions:** scripted, timed "pick the malicious
+    indicator" interrupts mid-shift; failing or timing out costs integrity.
+  - **Mistake allowance:** a shrinking per-night free-mistake buffer
+    (3/2/2/1/1) before approvals-that-should-be-denials start draining integrity.
+
+  The SecOps Console is a new desktop app whose sections unlock on the nights
+  above, with an icon alert when fresh intel arrives. Denying a real applicant
+  (a wrongful denial) is tracked separately from approving a hostile actor (a
+  security incident) and a directive violation, so the firing and breach
+  endings are independent failure tracks.
 - **MailHub inbox.** MailHub has a real inbox list (current applicant plus
   the boss's messages) with an unread-count badge on its desktop icon and the
   Inbox header. End-of-shift consequences (routine note, warning, threat,

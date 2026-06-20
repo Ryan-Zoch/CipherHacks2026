@@ -157,10 +157,15 @@ const Game = {
   storyCardIndex: 0,
   storyWrongfulDenials: 0,
   securityIncidents: 0,
+  policyViolations: 0,
+  nightMistakes: 0,
   bossWarnSent: false,
   bossThreatSent: false,
   inbox: [],
-  awaitingShiftEmail: false
+  awaitingShiftEmail: false,
+  secopsUnread: false,
+  intrusionActive: false,
+  intrusionCount: 0
 };
 
 /* ----------------------- STORY MODE ----------------------- */
@@ -296,6 +301,102 @@ function buildBossShiftEmail(dayIndex) {
   };
 }
 
+/* ----------------------- STORY MODE: SECOPS MECHANICS ----------------------- */
+
+// Reference panels in the SecOps Console unlock as the week escalates (0-based night).
+const SECOPS_DIRECTORY_NIGHT = 1; // Night 2
+const SECOPS_BULLETIN_NIGHT = 2;  // Night 3
+const SECOPS_DIRECTIVE_NIGHT = 3; // Night 4
+
+// Company Directory: the allowlist of genuine internal facts to verify against.
+const STORY_DIRECTORY = {
+  domain: 'aegisdynamics.com',
+  domainNote: 'The ONLY genuine Aegis Dynamics email domain. Any spelling variation (extra letters, hyphens, suffixes, "rn" for "m") is an impostor.',
+  employees: [
+    { name: 'Ryan Zoch', dept: 'Propulsion / Aerospace', email: 'ryan.zoch@aegisdynamics.com' },
+    { name: 'Priscilla Vance', dept: 'Systems Administration', email: 'priscilla.vance@aegisdynamics.com' },
+    { name: 'Helen Park', dept: 'CISO (your supervisor)', email: 'helen.park@aegisdynamics.com' }
+  ],
+  externalNote: 'External applicants normally apply from personal mail (gmail, yahoo, outlook). A corporate-looking domain that is not on this list is a red flag.'
+};
+
+// Threat Bulletin: cumulative blocklist. Each entry is added on the given night
+// and stays for the rest of the week.
+const STORY_BULLETIN = [
+  { night: 2, items: [
+    { kind: 'domain', value: 'aegisdynarnics.com', note: 'Typosquat of aegisdynamics.com ("rn" wearing the shape of an "m"). Used to impersonate staff.' },
+    { kind: 'email', value: 'zyan.roch.helper@mail.ru', note: 'Credential-drop address. Deny any applicant who redirects logins or offers here.' },
+    { kind: 'domain', value: '.ru free-mail (securemail.ru, oilfieldmail.ru, mail.ru)', note: 'Foreign free-mail used for the "grandson helper" credential redirects.' }
+  ]},
+  { night: 3, items: [
+    { kind: 'domain', value: 'aegis-dynamics.com / aegisdynamics-hr.com', note: 'Hyphen and suffix lookalikes. Not the genuine domain.' },
+    { kind: 'alias', value: 'Zyan Roch', note: 'Confirmed alias of the operator running this campaign. Deny on contact.' },
+    { kind: 'tactic', value: 'Credential / MFA / access requests', note: 'No real applicant needs YOUR login, MFA approval, or session token. Treat every such ask as hostile.' }
+  ]},
+  { night: 4, items: [
+    { kind: 'tactic', value: 'CEO / executive impersonation (BEC)', note: 'Emails invoking Mark Aegis and demanding urgent, discreet admin access. The CEO does not onboard through your queue.' },
+    { kind: 'domain', value: 'Vendor lookalikes (docu-sign-*, *-verify, *-careers, billing-aegis-*)', note: 'Fake e-sign, verification, recruiting, and billing portals harvesting credentials.' }
+  ]}
+];
+
+// CISO Directive (Night 4 onward): the Engineering Freeze. Overrides normal judgment.
+const STORY_DIRECTIVE = {
+  title: 'PRIORITY DIRECTIVE: ENGINEERING FREEZE',
+  rule: 'During the active incident, all engineering hiring is frozen. Deny EVERY applicant whose role contains "Engineer" tonight, legitimate or not. Process every other role normally. This directive stays in effect for the rest of the week.',
+  appliesTo: (person) => /engineer/i.test(person.job || '')
+};
+
+function directiveActive() {
+  return Game.storyMode && Game.storyDayIndex >= SECOPS_DIRECTIVE_NIGHT;
+}
+
+// What the correct action is for a card, accounting for the active directive.
+// Returns true if APPROVE is correct, false if DENY is correct.
+function approveIsCorrect(person) {
+  if (directiveActive() && STORY_DIRECTIVE.appliesTo(person)) return false;
+  return !person.isFake;
+}
+
+// Cumulative bulletin items visible on a given 0-based night.
+function bulletinItemsForNight(dayIndex) {
+  const night = dayIndex + 1;
+  return STORY_BULLETIN.filter(b => b.night <= night).flatMap(b => b.items);
+}
+
+// Per-night free-mistake buffer before approvals-that-should-be-denials cost integrity.
+const MISTAKE_ALLOWANCE_BY_NIGHT = [3, 2, 2, 1, 1];
+
+// Night 5 live-intrusion mini-events fire roughly a third and two-thirds of the
+// way through the final shift, scaled to however many cards that night actually has.
+function intrusionPointsForDay(dayLen) {
+  const pts = [];
+  [Math.floor(dayLen * 0.35), Math.floor(dayLen * 0.65)].forEach(x => {
+    if (x >= 1 && x < dayLen - 1 && !pts.includes(x)) pts.push(x);
+  });
+  return pts;
+}
+const STORY_INTRUSIONS = [
+  {
+    prompt: 'A login flood is hammering the VPN gateway. Identify and block the hostile source domain before it brute-forces in.',
+    malicious: 'aegisdynarnics.com',
+    benign: ['aegisdynamics.com', 'cobalt-systems.com', 'gmail.com']
+  },
+  {
+    prompt: 'Credentials are being exfiltrated to a drop address. Block the destination before the transfer completes.',
+    malicious: 'zyan.roch.helper@mail.ru',
+    benign: ['helen.park@aegisdynamics.com', 'ryan.zoch@aegisdynamics.com', 'priscilla.vance@aegisdynamics.com']
+  }
+];
+
+// Short "what's new tonight" callout shown on the briefing (null = nothing new).
+const STORY_NIGHT_MECHANICS = [
+  null,
+  'NEW TOOL: The Company Directory is live in the SecOps Console. Check email domains and internal transfers against it.',
+  'NEW INTEL: The Threat Bulletin is live in SecOps. Anything on the blocklist is an automatic deny.',
+  'NEW ORDER: A CISO Directive is in effect (see SecOps). Engineering hiring is frozen: deny every "Engineer" role tonight, real or not.',
+  'ALERT: The operator will try to breach us live tonight. Expect intrusions mid-shift, and contain them fast.'
+];
+
 /* ----------------------- BOOT LOG / LOGIN ----------------------- */
 
 const BOOT_LINES = [
@@ -378,27 +479,37 @@ function startGame(storyMode) {
   Game.storyCardIndex = 0;
   Game.storyWrongfulDenials = 0;
   Game.securityIncidents = 0;
+  Game.policyViolations = 0;
+  Game.nightMistakes = 0;
   Game.bossWarnSent = false;
   Game.bossThreatSent = false;
   Game.awaitingShiftEmail = false;
+  Game.secopsUnread = false;
+  Game.intrusionActive = false;
+  Game.intrusionCount = 0;
   Game.inbox = [];
   Game.storyDays = Game.storyMode ? buildStoryDays() : [];
   Game.totalCases = Game.storyMode
     ? Game.storyDays.reduce((n, d) => n + d.length, 0)
     : Game.people.length;
   document.getElementById('crash-overlay').classList.add('hidden');
+  document.getElementById('intrusion-overlay').classList.add('hidden');
   document.getElementById('intrusion-popup-layer').innerHTML = '';
   document.getElementById('boss-notification-layer').innerHTML = '';
   document.getElementById('debrief-overlay').classList.add('hidden');
   document.getElementById('desktop-screen').classList.remove('mega-glitch');
   document.querySelectorAll('.window').forEach(w => w.classList.remove('window-glitched'));
   document.querySelector('.app-stats-bar').classList.toggle('story-minimal', Game.storyMode);
+  const secopsIcon = document.getElementById('icon-secops');
+  if (secopsIcon) { secopsIcon.classList.add('hidden'); secopsIcon.classList.remove('intel-alert'); }
 
   renderHistory();
   updateFooter();
   updateTipsCopy();
   renderInbox();
   updateMailBadge();
+  renderSecops();
+  updateSecopsBadge();
   startClock();
   openWindow('tips');
   centerWindow(document.getElementById('window-tips'));
@@ -424,9 +535,9 @@ function updateTipsCopy() {
       '<li>Cross-reference the profile, the email, and the text before you decide.</li>' +
       '<li>Open the <strong>Case File</strong> to Approve or Deny. It also holds your history.</li>' +
       '<li>Watch the email domains. One letter off is still off.</li>' +
+      '<li>New tools and rules arrive each night in the <strong>SecOps Console</strong>: directory, threat bulletin, and command directives.</li>' +
       '<li>Approving a hostile actor costs integrity; clicking their links does too.</li>' +
-      '<li>At the end of each night, read the boss\'s message in <strong>MailHub</strong> to clock out.</li>' +
-      '<li>The unread badge on MailHub means the shift is not over yet.</li>';
+      '<li>At the end of each night, read the boss\'s message in <strong>MailHub</strong> to clock out.</li>';
     body.querySelector('.tips-reminder').innerHTML =
       'Reopen this anytime from the <strong>Tips</strong> icon.';
     return;
@@ -502,6 +613,12 @@ function showStoryBriefing(dayIndex, onDone) {
   document.getElementById('story-briefing-body').textContent = brief.body;
   const dayEl = document.getElementById('story-briefing-day');
   if (dayEl) dayEl.textContent = 'NIGHT ' + (dayIndex + 1) + ' OF ' + STORY_DAY_COUNT;
+  const mechEl = document.getElementById('story-briefing-mechanic');
+  if (mechEl) {
+    const m = STORY_NIGHT_MECHANICS[dayIndex];
+    mechEl.textContent = m || '';
+    mechEl.classList.toggle('hidden', !m);
+  }
   overlay.classList.remove('hidden');
   const btn = document.getElementById('story-briefing-btn');
   const handler = () => {
@@ -530,6 +647,14 @@ function startStoryDay(dayIndex) {
   Game.storyDayIndex = dayIndex;
   Game.storyCardIndex = 0;
   Game.awaitingShiftEmail = false;
+  Game.nightMistakes = 0;
+
+  // Reveal and refresh the SecOps Console as new intel comes online.
+  const secopsIcon = document.getElementById('icon-secops');
+  if (secopsIcon && secopsUnlocked(SECOPS_DIRECTORY_NIGHT)) secopsIcon.classList.remove('hidden');
+  renderSecops();
+  if (nightHasNewIntel(dayIndex)) flagSecopsIntel();
+
   showStoryBriefing(dayIndex, renderStoryCard);
 }
 
@@ -547,7 +672,79 @@ function advanceStoryCard() {
     endOfShift();
     return;
   }
+  // Night 5: scripted live-intrusion interrupts before certain cards.
+  if (Game.storyDayIndex === STORY_DAY_COUNT - 1 &&
+      intrusionPointsForDay(day.length).includes(Game.storyCardIndex)) {
+    triggerIntrusion(renderStoryCard);
+    return;
+  }
   renderStoryCard();
+}
+
+let intrusionTimerId = null;
+function triggerIntrusion(onDone) {
+  Game.intrusionActive = true;
+  const scn = STORY_INTRUSIONS[Game.intrusionCount % STORY_INTRUSIONS.length];
+  Game.intrusionCount++;
+
+  const overlay = document.getElementById('intrusion-overlay');
+  const promptEl = document.getElementById('intrusion-prompt');
+  const optsEl = document.getElementById('intrusion-options');
+  const resultEl = document.getElementById('intrusion-result');
+  const timerEl = document.getElementById('intrusion-timer');
+
+  promptEl.textContent = scn.prompt;
+  resultEl.classList.add('hidden');
+  resultEl.textContent = '';
+  optsEl.innerHTML = '';
+
+  let resolved = false;
+  let timeLeft = 8;
+  timerEl.textContent = String(timeLeft).padStart(2, '0');
+  timerEl.classList.remove('intrusion-timer-low');
+
+  const finish = (success) => {
+    if (resolved) return;
+    resolved = true;
+    clearInterval(intrusionTimerId);
+    optsEl.querySelectorAll('.intrusion-opt').forEach(b => { b.disabled = true; });
+    triggerGlitch();
+    if (!success) {
+      Game.health -= 15;
+      Game.securityIncidents++;
+      updateFooter();
+    }
+    resultEl.textContent = success
+      ? 'THREAT CONTAINED. The source is blocked.'
+      : 'CONTAINMENT FAILED. They got a foothold and integrity took the hit.';
+    resultEl.className = 'intrusion-result ' + (success ? 'ok' : 'bad');
+    setTimeout(() => {
+      overlay.classList.add('hidden');
+      Game.intrusionActive = false;
+      if (Game.health <= 0) { Game.health = 0; updateFooter(); endOfShift(); }
+      else onDone();
+    }, 1500);
+  };
+
+  shuffle([scn.malicious, ...scn.benign]).forEach(opt => {
+    const btn = document.createElement('button');
+    btn.className = 'intrusion-opt';
+    btn.textContent = opt;
+    btn.addEventListener('click', () => {
+      if (resolved) return;
+      if (opt === scn.malicious) { btn.classList.add('correct'); finish(true); }
+      else { btn.classList.add('wrong'); finish(false); }
+    });
+    optsEl.appendChild(btn);
+  });
+
+  overlay.classList.remove('hidden');
+  intrusionTimerId = setInterval(() => {
+    timeLeft--;
+    timerEl.textContent = String(Math.max(0, timeLeft)).padStart(2, '0');
+    if (timeLeft <= 3) timerEl.classList.add('intrusion-timer-low');
+    if (timeLeft <= 0) finish(false);
+  }, 1000);
 }
 
 function endOfShift() {
@@ -744,8 +941,116 @@ function showShiftEndNotification() {
   layer.appendChild(note);
 }
 
+/* ----------------------- SECOPS CONSOLE ----------------------- */
+
+function secopsUnlocked(night) {
+  return Game.storyMode && Game.storyDayIndex >= night;
+}
+
+function newestUnlockedSecops() {
+  if (secopsUnlocked(SECOPS_DIRECTIVE_NIGHT)) return 'directive';
+  if (secopsUnlocked(SECOPS_BULLETIN_NIGHT)) return 'bulletin';
+  return 'directory';
+}
+
+function nightHasNewIntel(dayIndex) {
+  return dayIndex === SECOPS_DIRECTORY_NIGHT ||
+         dayIndex === SECOPS_BULLETIN_NIGHT ||
+         dayIndex === SECOPS_DIRECTIVE_NIGHT;
+}
+
+function setSecopsActive(sec) {
+  document.querySelectorAll('.secops-nav-btn').forEach(b => b.classList.toggle('active', b.dataset.sec === sec));
+  document.querySelectorAll('.secops-page').forEach(p => p.classList.remove('active'));
+  const page = document.getElementById('secops-page-' + sec);
+  if (page) page.classList.add('active');
+}
+
+function setupSecopsNav() {
+  document.querySelectorAll('.secops-nav-btn').forEach(btn => {
+    btn.addEventListener('click', () => setSecopsActive(btn.dataset.sec));
+  });
+}
+
+function renderSecops() {
+  const dirEl = document.getElementById('secops-directive');
+  if (!dirEl) return;
+  if (secopsUnlocked(SECOPS_DIRECTIVE_NIGHT)) {
+    dirEl.innerHTML =
+      '<div class="secops-directive-box">' +
+        '<div class="secops-directive-title">' + escapeHtml(STORY_DIRECTIVE.title) + '</div>' +
+        '<div class="secops-directive-rule">' + escapeHtml(STORY_DIRECTIVE.rule) + '</div>' +
+      '</div>';
+  } else {
+    dirEl.innerHTML = '<div class="secops-locked">No active directive.<br>Command issues directives as the incident develops.</div>';
+  }
+
+  const directoryEl = document.getElementById('secops-directory');
+  if (secopsUnlocked(SECOPS_DIRECTORY_NIGHT)) {
+    let h = '<div class="secops-dir-note">' + escapeHtml(STORY_DIRECTORY.domainNote) + '</div>';
+    h += '<div class="secops-dir-domain">' + escapeHtml(STORY_DIRECTORY.domain) + '</div>';
+    h += '<div class="secops-emp-title" style="font-size:12px;color:#fff;font-weight:bold;margin:6px 0 8px">Verified Internal Staff</div>';
+    STORY_DIRECTORY.employees.forEach(e => {
+      h += '<div class="secops-emp-row">' +
+        '<span class="secops-emp-name">' + escapeHtml(e.name) + '</span>' +
+        '<span class="secops-emp-meta">' + escapeHtml(e.dept) + '</span>' +
+        '<span class="secops-emp-meta">' + escapeHtml(e.email) + '</span></div>';
+    });
+    h += '<div class="secops-dir-note" style="margin-top:10px">' + escapeHtml(STORY_DIRECTORY.externalNote) + '</div>';
+    directoryEl.innerHTML = h;
+  } else {
+    directoryEl.innerHTML = '<div class="secops-locked">Directory access pending.<br>Cleared for use from Night 2.</div>';
+  }
+
+  const bulletinEl = document.getElementById('secops-bulletin');
+  if (secopsUnlocked(SECOPS_BULLETIN_NIGHT)) {
+    const items = bulletinItemsForNight(Game.storyDayIndex);
+    bulletinEl.innerHTML = items.map(it =>
+      '<div class="secops-bulletin-item">' +
+        '<span class="secops-bulletin-kind">' + escapeHtml(it.kind) + '</span>' +
+        '<div class="secops-bulletin-value">' + escapeHtml(it.value) + '</div>' +
+        '<div class="secops-bulletin-note">' + escapeHtml(it.note) + '</div>' +
+      '</div>').join('');
+  } else {
+    bulletinEl.innerHTML = '<div class="secops-locked">No threat intel yet.<br>The SOC publishes the bulletin from Night 3.</div>';
+  }
+}
+
+function updateSecopsBadge() {
+  const badge = document.getElementById('secops-icon-badge');
+  if (badge) badge.classList.toggle('hidden', !Game.secopsUnread);
+}
+
+function markSecopsRead() {
+  Game.secopsUnread = false;
+  updateSecopsBadge();
+  const icon = document.querySelector('.desktop-icon[data-window="secops"]');
+  if (icon) icon.classList.remove('intel-alert');
+  setSecopsActive(newestUnlockedSecops());
+}
+
+function flagSecopsIntel() {
+  Game.secopsUnread = true;
+  updateSecopsBadge();
+  const icon = document.querySelector('.desktop-icon[data-window="secops"]');
+  if (icon) { icon.classList.remove('intel-alert'); void icon.offsetWidth; icon.classList.add('intel-alert'); }
+}
+
+// Does this applicant match a currently-published Threat Bulletin indicator?
+function matchesBulletin(person) {
+  if (!secopsUnlocked(SECOPS_BULLETIN_NIGHT)) return false;
+  const addr = ((person.email && person.email.senderAddress) || '').toLowerCase();
+  const text = ((person.text && person.text.body) || '').toLowerCase();
+  const name = (person.name || '').toLowerCase();
+  if (addr.includes('aegisdynarnics.com')) return true;
+  if (addr.includes('aegis-dynamics.com') || addr.includes('aegisdynamics-hr.com')) return true;
+  if (addr.endsWith('.ru') || text.includes('zyan.roch.helper') || text.includes('@mail.ru')) return true;
+  if (name.includes('zyan roch')) return true;
+  return false;
+}
+
 function isCleanRecord() {
-  return Game.securityIncidents === 0 && Game.storyWrongfulDenials <= 2;
+  return Game.securityIncidents === 0 && Game.policyViolations === 0 && Game.storyWrongfulDenials <= 2;
 }
 
 function finishStoryZyan(approved) {
@@ -1020,6 +1325,16 @@ function renderHistoryList(el, revealCorrectness) {
     }
     el.appendChild(row);
 
+    if (h.directiveFreeze) {
+      const note = document.createElement('div');
+      note.className = 'app-history-details';
+      note.style.borderLeftColor = '#c0392b';
+      note.style.background = '#fdecea';
+      note.style.color = '#7a2018';
+      note.textContent = 'Engineering Freeze was in effect: this engineering role had to be denied tonight regardless of legitimacy.';
+      el.appendChild(note);
+    }
+
     if (h.isFake && FAKE_REASONS[h.id]) {
       const details = document.createElement('details');
       details.className = 'app-history-details';
@@ -1132,7 +1447,10 @@ function decideEntry(entry, approved) {
   if (Game.over || entry.decided) return;
   entry.decided = true;
   const p = entry.person;
-  const correct = approved ? !p.isFake : p.isFake;
+  // Correctness accounts for the active CISO directive (e.g. engineering freeze).
+  const correct = Game.storyMode
+    ? (approved === approveIsCorrect(p))
+    : (approved ? !p.isFake : p.isFake);
   Game.caseNumber++;
 
   if (correct) {
@@ -1151,25 +1469,38 @@ function decideEntry(entry, approved) {
         ? `Correct - ${p.name} was a legitimate hire.`
         : `Correct - ${p.name} was flagged and denied.`);
     }
-  } else {
+  } else if (!Game.storyMode) {
     const damage = 8 + p.difficulty * 4;
-    if (!Game.storyMode) {
-      Game.health -= damage;
-      Game.streak = 0;
-      Game.difficulty = Math.max(1, Game.difficulty - 1);
-      showToast(false, approved
-        ? `Mistake! ${p.name} was a fraudulent applicant. -${damage}% integrity.`
-        : `Mistake! ${p.name} was a real hire, wrongly denied. -${damage}% integrity.`);
-    } else if (approved && p.isFake) {
-      // Story mode: approving a hostile actor is the integrity failure track.
-      Game.health -= damage;
+    Game.health -= damage;
+    Game.streak = 0;
+    Game.difficulty = Math.max(1, Game.difficulty - 1);
+    showToast(false, approved
+      ? `Mistake! ${p.name} was a fraudulent applicant. -${damage}% integrity.`
+      : `Mistake! ${p.name} was a real hire, wrongly denied. -${damage}% integrity.`);
+  } else if (approved) {
+    // Story mode, approved someone who should have been denied.
+    const onBulletin = p.isFake && matchesBulletin(p);
+    if (p.isFake) {
       Game.securityIncidents++;
-      if (p.id !== STORY_ZYAN_ID) triggerStoryFakeGlitch(p.difficulty);
-    } else if (!approved && !p.isFake) {
-      // Story mode: denying a real hire is a separate (wrongful-denial) track,
-      // tracked toward the firing ending rather than draining integrity.
-      Game.storyWrongfulDenials++;
+      if (p.id !== STORY_ZYAN_ID) triggerStoryFakeGlitch(onBulletin ? 5 : p.difficulty);
+    } else {
+      // Approved a real applicant you were ordered to deny (directive violation).
+      Game.policyViolations++;
+      triggerGlitch();
     }
+    // Integrity damage modulated by the per-night free-mistake buffer.
+    // A known, blocklisted threat never gets a free pass.
+    Game.nightMistakes++;
+    const allowance = MISTAKE_ALLOWANCE_BY_NIGHT[Game.storyDayIndex] || 0;
+    const free = !onBulletin && Game.nightMistakes <= allowance;
+    if (!free) {
+      let damage = 8 + p.difficulty * 4;
+      if (onBulletin) damage += 12;
+      Game.health -= damage;
+    }
+  } else {
+    // Story mode, denied someone who should have been approved: wrongful-denial track.
+    Game.storyWrongfulDenials++;
   }
   Game.peakDifficulty = Math.max(Game.peakDifficulty, Game.difficulty);
   Game.history.unshift({
@@ -1177,7 +1508,8 @@ function decideEntry(entry, approved) {
     decisionLabel: approved ? p.approveLabel : p.denyLabel,
     correct,
     id: p.id,
-    isFake: p.isFake
+    isFake: p.isFake,
+    directiveFreeze: Game.storyMode && directiveActive() && STORY_DIRECTIVE.appliesTo(p) && !p.isFake
   });
 
   updateFooter();
@@ -1368,6 +1700,7 @@ function openWindow(name) {
   win.classList.remove('hidden');
   Game.openWindows.add(name);
   markAppOpened(name);
+  if (name === 'secops') markSecopsRead();
   bringToFront(win);
 }
 
@@ -1523,6 +1856,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   setupLogin();
   setupWindows();
   setupAppNav();
+  setupSecopsNav();
   document.getElementById('restart-btn').addEventListener('click', restartGame);
   document.getElementById('taskbar-fullscreen-btn').addEventListener('click', toggleFullscreen);
   document.getElementById('taskbar-logout-btn').addEventListener('click', logout);

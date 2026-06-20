@@ -54,6 +54,7 @@
     <div class="story-box-title briefing-title" id="story-briefing-title">NIGHT 1 / ORIENTATION</div>
     <div class="briefing-divider"></div>
     <p class="story-box-body briefing-body" id="story-briefing-body"></p>
+    <div class="briefing-mechanic hidden" id="story-briefing-mechanic"></div>
     <button id="story-briefing-btn" class="briefing-btn">CLOCK IN</button>
   </div>
 </div>
@@ -70,6 +71,17 @@
 <!-- ============ STORY MODE: SYSTEM CRASH ============ -->
 <div id="crash-overlay" class="hidden">
   <div class="crash-text">SYSTEM FAILURE</div>
+</div>
+
+<!-- ============ STORY MODE: LIVE INTRUSION ============ -->
+<div id="intrusion-overlay" class="hidden">
+  <div class="intrusion-box">
+    <div class="intrusion-header">&#9888; LIVE INTRUSION IN PROGRESS</div>
+    <div class="intrusion-timer" id="intrusion-timer">08</div>
+    <p class="intrusion-prompt" id="intrusion-prompt"></p>
+    <div class="intrusion-options" id="intrusion-options"></div>
+    <div class="intrusion-result hidden" id="intrusion-result"></div>
+  </div>
 </div>
 
 <!-- ============ DESKTOP / MAIN GAME ============ -->
@@ -94,6 +106,11 @@
     <button class="desktop-icon" data-window="application">
       <span class="icon-glyph icon-application">&#10003;</span>
       <span class="icon-label">Case File</span>
+    </button>
+    <button class="desktop-icon hidden" data-window="secops" id="icon-secops">
+      <span class="icon-glyph icon-secops">S</span>
+      <span class="icon-badge hidden" id="secops-icon-badge">!</span>
+      <span class="icon-label">SecOps</span>
     </button>
     <button class="desktop-icon" data-window="tips">
       <span class="icon-glyph icon-tips">!</span>
@@ -288,6 +305,38 @@
             <div id="app-highscores" class="app-highscores"></div>
           </section>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== WINDOW: SecOps Console (Story Mode reference) ===== -->
+  <div class="window window-secops" id="window-secops" data-window="secops">
+    <div class="window-titlebar" data-drag-handle>
+      <span class="window-title">S&nbsp;&nbsp;SecOps Console</span>
+      <div class="window-controls">
+        <button class="win-btn win-min" data-action="minimize">&minus;</button>
+        <button class="win-btn win-close" data-action="close">&times;</button>
+      </div>
+    </div>
+    <div class="window-body secops-body">
+      <nav class="secops-nav">
+        <button class="secops-nav-btn active" data-sec="directive">Directive</button>
+        <button class="secops-nav-btn" data-sec="directory">Directory</button>
+        <button class="secops-nav-btn" data-sec="bulletin">Threat Bulletin</button>
+      </nav>
+      <div class="secops-pages">
+        <section class="secops-page active" id="secops-page-directive">
+          <h3>Tonight's Directive</h3>
+          <div id="secops-directive"></div>
+        </section>
+        <section class="secops-page" id="secops-page-directory">
+          <h3>Company Directory</h3>
+          <div id="secops-directory"></div>
+        </section>
+        <section class="secops-page" id="secops-page-bulletin">
+          <h3>Threat Bulletin</h3>
+          <div id="secops-bulletin"></div>
+        </section>
       </div>
     </div>
   </div>

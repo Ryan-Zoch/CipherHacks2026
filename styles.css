@@ -152,6 +152,11 @@ button { font-family: inherit; cursor: pointer; }
   font-size: 13px; line-height: 1.85; color: #d6ffe9; margin-bottom: 24px;
 }
 .briefing-btn { letter-spacing: 2px; padding: 11px 24px; }
+.briefing-mechanic {
+  background: rgba(255, 210, 77, 0.1); border: 1px solid #c9a233; border-left: 4px solid #ffd24d;
+  border-radius: 4px; padding: 10px 13px; margin-bottom: 22px;
+  font-size: 12px; line-height: 1.55; color: #ffe9b0; font-weight: bold;
+}
 
 /* ===================== DESKTOP ===================== */
 #desktop-screen {
@@ -212,6 +217,41 @@ button { font-family: inherit; cursor: pointer; }
   animation: breach-corruption 0.25s steps(2, end) infinite;
 }
 
+/* Live intrusion mini-event */
+#intrusion-overlay {
+  position: fixed; inset: 0; z-index: 480;
+  background: rgba(20, 0, 0, 0.82);
+  display: flex; align-items: center; justify-content: center;
+  font-family: "Consolas", "Courier New", monospace;
+}
+.intrusion-box {
+  width: 480px; background: #15090a; border: 2px solid #ff3344; border-radius: 6px;
+  padding: 24px 28px; text-align: center;
+  box-shadow: 0 0 40px rgba(255, 51, 68, 0.5);
+  animation: popup-flash 0.7s steps(2, end) infinite;
+}
+.intrusion-header {
+  color: #ff5566; font-weight: bold; font-size: 15px; letter-spacing: 2px; margin-bottom: 10px;
+}
+.intrusion-timer {
+  font-size: 40px; font-weight: bold; color: #ffd24d; margin-bottom: 12px; letter-spacing: 2px;
+}
+.intrusion-timer-low { color: #ff3344; }
+.intrusion-prompt { font-size: 12.5px; line-height: 1.6; color: #ffd9d3; margin-bottom: 18px; text-align: left; }
+.intrusion-options { display: flex; flex-direction: column; gap: 8px; }
+.intrusion-opt {
+  font-family: inherit; font-size: 13px; padding: 10px 12px; cursor: pointer;
+  background: #0c1117; border: 1px solid #3a4a5a; color: #cdd6e0; border-radius: 4px;
+  word-break: break-all; transition: background 0.1s ease;
+}
+.intrusion-opt:hover { background: #1a2330; border-color: #5a6b7c; }
+.intrusion-opt.correct { background: #134a32; border-color: #5dffb0; color: #c9ffe4; }
+.intrusion-opt.wrong { background: #4a1010; border-color: #ff3344; color: #ffd9d9; }
+.intrusion-opt:disabled { cursor: default; }
+.intrusion-result { margin-top: 16px; font-size: 13px; font-weight: bold; letter-spacing: 1px; }
+.intrusion-result.ok { color: #5dffb0; }
+.intrusion-result.bad { color: #ff5566; }
+
 /* Flashy intrusion popups the player must close */
 #intrusion-popup-layer { position: absolute; inset: 0; z-index: 80; pointer-events: none; }
 .intrusion-popup {
@@ -270,7 +310,9 @@ button { font-family: inherit; cursor: pointer; }
 .icon-email { background: #c5221f; font-size: 20px; }
 .icon-text { background: #2dbe5c; font-size: 18px; }
 .icon-application { background: #7b2ff7; font-size: 20px; }
+.icon-secops { background: #c0392b; font-size: 19px; font-weight: 900; }
 .icon-tips { background: #f5a623; font-size: 20px; font-weight: 900; }
+.desktop-icon.intel-alert .icon-glyph { animation: shake 0.5s ease; box-shadow: 0 0 0 2px #ffd24d, 0 2px 6px rgba(0,0,0,0.4); }
 
 /* ===================== GENERIC WINDOW ===================== */
 .window {
@@ -513,6 +555,53 @@ button { font-family: inherit; cursor: pointer; }
 }
 .health-bar-fill.warn { background: linear-gradient(to right, #e0a82e, #f4cf5b); }
 .health-bar-fill.danger { background: linear-gradient(to right, #d8413a, #ff6b62); }
+
+/* ===================== SECOPS CONSOLE ===================== */
+.window-secops { width: 540px; height: 420px; top: 60px; left: 380px; }
+.secops-body { display: flex; padding: 0; background: #11161c; color: #cdd6e0; }
+.secops-nav {
+  width: 130px; flex: 0 0 130px; background: #0c1117; border-right: 1px solid #232b34;
+  display: flex; flex-direction: column; padding: 10px 8px; gap: 6px;
+}
+.secops-nav-btn {
+  border: none; background: transparent; text-align: left; padding: 8px 10px; font-size: 12px;
+  border-radius: 4px; color: #9aa7b4; font-family: inherit; cursor: pointer;
+}
+.secops-nav-btn:hover { background: #1a212a; color: #cdd6e0; }
+.secops-nav-btn.active { background: #c0392b; color: #fff; font-weight: bold; }
+.secops-nav-btn .nav-new { color: #ffd24d; font-weight: bold; margin-left: 4px; }
+.secops-pages { flex: 1; overflow-y: auto; }
+.secops-page { display: none; padding: 14px 16px; }
+.secops-page.active { display: block; }
+.secops-page h3 { font-size: 13px; color: #fff; margin-bottom: 12px; letter-spacing: 0.5px; }
+.secops-locked { color: #6b7785; font-style: italic; font-size: 12px; text-align: center; margin-top: 30px; line-height: 1.6; }
+.secops-directive-box {
+  background: #2a0b0b; border: 1px solid #c0392b; border-left: 4px solid #c0392b; border-radius: 4px;
+  padding: 12px 14px;
+}
+.secops-directive-title { color: #ff7a6b; font-weight: bold; font-size: 12.5px; letter-spacing: 1px; margin-bottom: 8px; }
+.secops-directive-rule { font-size: 12px; line-height: 1.6; color: #ffd9d3; }
+.secops-dir-note { font-size: 11.5px; line-height: 1.55; color: #9aa7b4; margin-bottom: 12px; }
+.secops-dir-domain {
+  font-family: "Consolas", monospace; font-size: 13px; color: #6dffb0; font-weight: bold;
+  background: #0c1117; border: 1px solid #234; border-radius: 4px; padding: 6px 10px; margin-bottom: 10px; display: inline-block;
+}
+.secops-emp-row {
+  display: flex; flex-direction: column; gap: 1px; padding: 7px 10px; border: 1px solid #232b34;
+  border-radius: 4px; background: #0e141a; margin-bottom: 6px;
+}
+.secops-emp-name { font-size: 12px; color: #e6edf3; font-weight: bold; }
+.secops-emp-meta { font-size: 11px; color: #8b98a5; font-family: "Consolas", monospace; }
+.secops-bulletin-item {
+  border: 1px solid #3a2410; border-left: 4px solid #e0a82e; background: #1d160a; border-radius: 4px;
+  padding: 8px 11px; margin-bottom: 8px;
+}
+.secops-bulletin-kind {
+  display: inline-block; font-size: 9.5px; letter-spacing: 1px; text-transform: uppercase; font-weight: bold;
+  color: #11161c; background: #e0a82e; border-radius: 3px; padding: 1px 6px; margin-bottom: 5px;
+}
+.secops-bulletin-value { font-size: 12px; color: #ffe6b0; font-family: "Consolas", monospace; margin-bottom: 3px; word-break: break-all; }
+.secops-bulletin-note { font-size: 11px; color: #b6a98c; line-height: 1.5; }
 
 /* ===================== TASKBAR ===================== */
 #taskbar {
