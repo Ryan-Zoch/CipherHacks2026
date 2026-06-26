@@ -101,3 +101,10 @@ Two profile photos are currently missing from `images/` (`p39.jpeg`,
 `p40.jpeg` — Jerick Hernandez and Zyan Roch, the Story Mode finale
 antagonist); both fall back to the generated initials placeholder via
 `setImgWithFallback()` until real photos are added.
+
+## AI Use Disclosure
+
+This website, in it's entirety, was vibe coded with Claude Opus 4.8 in Claude Code. The reason I chose to develop this website this way is because I wanted to get it working quickly in order to start keeping track of my different piano pieces.
+
+Also, if you notice any issues with the site, feel free to open a new issue on the github website. 
+Thank you for your understanding!
