@@ -104,7 +104,6 @@ antagonist); both fall back to the generated initials placeholder via
 
 ## AI Use Disclosure
 
-This website, in it's entirety, was vibe coded with Claude Opus 4.8 in Claude Code. The reason I chose to develop this website this way is because I wanted to get it working quickly in order to start keeping track of my different piano pieces.
+This website, in it's entirety, was vibe coded with Claude Opus 4.8 in Claude Code. The reason we chose to develop this project this way was due to both the time restrictions and overall theme of the CipherHacks hackathon. Also, if you notice any issues with the site, feel free to open a new issue on the github website. 
 
-Also, if you notice any issues with the site, feel free to open a new issue on the github website. 
 Thank you for your understanding!
